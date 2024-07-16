@@ -1,0 +1,40 @@
+.sidebar{
+    flex:.35; /*take 35% of the available space (width)*/
+    display: flex;
+    flex-direction: column;
+}
+.sidebar__header{
+    padding: 15px;
+    color: #405D72;
+    border-right: 1px solid lightgray;   
+}
+
+.sidebar__search{
+    background-color: #f6f6f6;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    padding: 10px;
+}
+.slidebar__search__container{
+    background-color: white;
+    height: 30px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    border-radius: 20px;
+}
+
+.slidebar__search__container > input{
+    border: none;
+    margin-left: 10px;
+}
+.icon{
+    color: gray;
+    padding: 10px;
+}
+.sidebar__chats{
+    flex: 1;
+    background-color: white;
+    overflow-y: scroll;
+}
