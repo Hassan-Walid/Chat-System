@@ -3,15 +3,16 @@
     place-items: center;
     background-color: #405D72;
     height: 100vh;
+    
 }
+
 
 .app__body{
     display: flex;
     background-color:#FFF8F3;
     width: 90vw;
     height: 90vh;
-    /* margin-top: -50px; */
-    /*for 3D border left bottom bluring shadow*/
+    
     box-shadow: -1px 4px 20px -6px rgba(0,0,0,0.7);
   
 }

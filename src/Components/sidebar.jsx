@@ -1,59 +1,86 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from "react";
 import "../Styles/sideBar.css";
-import { Avatar, IconButton } from '@mui/material';
-/* npm install @mui/icons-material */
-import DonutLargeIcon from '@mui/icons-material/DonutLarge';
-import CommentIcon from '@mui/icons-material/Comment';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import SearchIcon from '@mui/icons-material/Search';
-import SidebarChat from '../Components/sidebarChat';
-// import db from './firebase';
-// import { useSetValue } from "./StateProvider";
+import SearchIcon from "@mui/icons-material/Search";
+import app from "../config.js";
+import { Link } from "react-router-dom";
+
+import { getDatabase, push, ref, set, onChildAdded } from "firebase/database";
+import RoomProvider from "../Context/room.js";
 
 function Sidebar() {
-    const[rooms, setRooms]=useState([]);
-    // const [{ user }] = useSetValue();
-    let user;
+  const db = getDatabase(app);
+  const dbRef = ref(db, "chatRooms");
 
-    useEffect(()=>{
-        // const unSubscripe = db.collection("rooms").onSnapshot((snapshot)=>
-        // setRooms(
-        //     snapshot.docs.map((doc)=>({
-        //         id:doc.id,
-        //         data:doc.data(),
-        //     })
-        //   )
-        //  )
-        // );
-        // return ()=>{ unSubscripe(); }
-    },[])
+  const [rooms, setRooms] = useState([]);
+
+  // const { roomIdTest, setRoomIdTest } = useContext(RoomProvider);
+
+  useEffect(() => {
+    //listen when i create a new room
+    const unsubscribe = onChildAdded(dbRef, (snapshot) => {
+      setRooms((prevRooms) => {
+        return [...prevRooms, snapshot.val()];
+      });
+    });
+
+    // Clean up the listener on unmount
+    return () => unsubscribe();
+  }, []);
+
+  let createRoom = () => {
+    let roomName = prompt("Enter Chat Room Name, please!!..");
+
+    if (roomName) {
+      const newDomRef = push(ref(db, "chatRooms"));
+      set(newDomRef, {
+        roomId: 2, //already send from computam
+        roomName: roomName, //already send from computam
+        roomMessages: [],
+        roomImage: null, //already send from computam
+      })
+        .then(() => {
+          alert("added successfully");
+        })
+        .catch((e) => console.log(e));
+    }
+  };
 
   return (
-    <div className='sidebar'>
-        <div className='sidebar__header'>
-            <h2>Computam Chat</h2>
-            {/* <Avatar src={user?.photoURL}/>
-            <div className='sidebar__headerRight'>
-                <IconButton> <DonutLargeIcon/> </IconButton>
-                <IconButton> <CommentIcon/>  </IconButton>
-                <IconButton> <MoreVertIcon/> </IconButton>
-            </div> */}
+    <div className="sidebar">
+      <div className="sidebar__search">
+        <div className="slidebar__search__container">
+          <SearchIcon className="icon" />
+          <input placeholder="Search or start new chat" type="text" />
         </div>
-        <div className='sidebar__search'>
-            <div className='slidebar__search__container'>
-                <SearchIcon className='icon'/>
-                <input placeholder='Search or start new chat' type='text'/>
-            </div>
+      </div>
+
+      <div className="sidebar__chats">
+        <div className="chatItemContainer" onClick={createRoom}>
+          <h4> ➕ Add New Chat</h4>
         </div>
-        <div className='sidebar__chats'>
-            <SidebarChat addNewChat></SidebarChat>
-            {rooms.map((room)=>(
-                <SidebarChat key={room.id} id={room.id} name={room.data.name}/>
-            ))}
-        </div>
-      
+
+        {rooms.map((room) => {
+          console.log(room);
+          return (
+            // <SidebarChat
+            //   key={room["roomId"]}
+            //   id={room["roomId"]}
+            //   name={room["roomName"]}
+            // />
+            <Link to={`/rooms/${room["roomId"]}`}>
+              <div className="chatItemContainer">
+                {/* <img src={require(`./img/${imgId}.jpg`)} alt=''/> */}
+                <div className="chatInfo">
+                  <h5> {room["roomName"]} </h5>
+                  {/* <p> {messages[messages.length - 1]?.message}</p> */}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
-  )
+  );
 }
 
-export default Sidebar
+export default Sidebar;
