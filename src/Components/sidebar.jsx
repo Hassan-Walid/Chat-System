@@ -12,8 +12,22 @@ function Sidebar() {
   const dbRef = ref(db, "chatRooms");
 
   const [rooms, setRooms] = useState([]);
+  const [filteredRooms, setFilteredRooms] = useState(rooms);
 
   // const { roomIdTest, setRoomIdTest } = useContext(RoomProvider);
+  // console.log("fe = ", filteredRooms);
+  const handleSearch = (e) => {
+    console.log(e.target.value);
+    handleFliter(e.target.value);
+  };
+
+  const handleFliter = (value) => {
+    setFilteredRooms(
+      rooms.filter((room) =>
+        room.roomName.toLowerCase().includes(value.toLowerCase())
+      )
+    );
+  };
 
   useEffect(() => {
     //listen when i create a new room
@@ -26,6 +40,10 @@ function Sidebar() {
     // Clean up the listener on unmount
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    setFilteredRooms(rooms);
+  }, [rooms]);
 
   let createRoom = () => {
     let roomName = prompt("Enter Chat Room Name, please!!..");
@@ -50,7 +68,12 @@ function Sidebar() {
       <div className="sidebar__search">
         <div className="slidebar__search__container">
           <SearchIcon className="icon" />
-          <input placeholder="Search or start new chat" type="text" />
+          <input
+            placeholder="Search or start new chat"
+            type="text"
+            onChange={handleSearch}
+            style={{ outline: "none" }}
+          />
         </div>
       </div>
 
@@ -59,25 +82,31 @@ function Sidebar() {
           <h4> ➕ Add New Chat</h4>
         </div>
 
-        {rooms.map((room) => {
-          console.log(room);
-          return (
-            // <SidebarChat
-            //   key={room["roomId"]}
-            //   id={room["roomId"]}
-            //   name={room["roomName"]}
-            // />
-            <Link to={`/rooms/${room["roomId"]}`}>
-              <div className="chatItemContainer">
-                {/* <img src={require(`./img/${imgId}.jpg`)} alt=''/> */}
-                <div className="chatInfo">
-                  <h5> {room["roomName"]} </h5>
-                  {/* <p> {messages[messages.length - 1]?.message}</p> */}
+        {filteredRooms.length > 0 ? (
+          filteredRooms.map((room) => {
+            // console.log(room);
+            return (
+              // <SidebarChat
+              //   key={room["roomId"]}
+              //   id={room["roomId"]}
+              //   name={room["roomName"]}
+              // />
+              <Link to={`/rooms/${room["roomId"]}`}>
+                <div className="chatItemContainer">
+                  {/* <img src={require(`./img/${imgId}.jpg`)} alt=''/> */}
+                  <div className="chatInfo">
+                    <h5> {room["roomName"]} </h5>
+                    {/* <p> {messages[messages.length - 1]?.message}</p> */}
+                  </div>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
+              </Link>
+            );
+          })
+        ) : (
+          <p style={{ textAlign: "center", color: "grey" }}>
+            Invalid Room Name 🙂
+          </p>
+        )}
       </div>
     </div>
   );
