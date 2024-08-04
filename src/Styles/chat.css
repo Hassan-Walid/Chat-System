@@ -37,22 +37,22 @@
   padding: 15px;
 
   margin-bottom: 30px;
+  margin-top: 3%;
 }
 
 .chat_message {
-  padding: 5px;
-  margin: 5px;
   direction: rtl;
   display: flex;
   flex-direction: row;
   /* width: 100%; */
+  margin-bottom: 15px;
 }
 
 .chat_reciver {
   display: flex;
   flex-direction: row;
   padding: 10px;
-  margin: 5px;
+  margin-bottom: 15px;
 }
 
 .chat-section {
@@ -62,9 +62,12 @@
 }
 
 .contentMessage {
+  display: flex;
+  flex-direction: column;
   border-radius: 15px;
-  /* padding: 5px; */
+
   padding: 0 10px;
+  direction: ltr;
 }
 .contentMessage pre {
   font-size: 16px;
@@ -78,6 +81,21 @@
 .usernameMessage {
   font-size: 20px;
   color: black;
+}
+
+.LinkAttach {
+  font-weight: bold;
+  font-style: italic;
+  background-color: lightgrey;
+  padding: 10px;
+  border-radius: 10px;
+  transition: 1s;
+  margin: 10px;
+}
+.LinkAttach:hover {
+  color: white;
+  background-color: #3482ba;
+  transition: 1s;
 }
 .chatfooter {
   display: flex;

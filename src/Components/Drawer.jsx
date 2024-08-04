@@ -12,7 +12,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Sidebar from "./sidebar";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Chat from "./chat";
-import RoomProvider from "../Context/room";
+import { RoomContext } from "../Context/room";
 
 const drawerWidth = 300;
 
@@ -62,8 +62,11 @@ const DrawerHeader = styled("div")(({ theme }) => ({
 }));
 
 export default function PersistentDrawerLeft() {
-  // const { state, setState } = React.useContext(RoomProvider);
-  console.log("test=", React.useContext(RoomProvider));
+  const { roomName } = React.useContext(RoomContext);
+  React.useEffect(() => {
+    // setState("walid");
+  });
+  // const { state, setState } = React.useContext(RoomContext);
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
 
@@ -93,7 +96,7 @@ export default function PersistentDrawerLeft() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            Chat Room
+            {roomName}
           </Typography>
         </Toolbar>
       </AppBar>

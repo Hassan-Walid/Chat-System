@@ -5,7 +5,6 @@ import app from "../config.js";
 import { Link } from "react-router-dom";
 
 import { getDatabase, push, ref, set, onChildAdded } from "firebase/database";
-import RoomProvider from "../Context/room.js";
 
 function Sidebar() {
   const db = getDatabase(app);
@@ -51,7 +50,7 @@ function Sidebar() {
     if (roomName) {
       const newDomRef = push(ref(db, "chatRooms"));
       set(newDomRef, {
-        roomId: 2, //already send from computam
+        roomId: 21, //already send from computam
         roomName: roomName, //already send from computam
         roomMessages: [],
         roomImage: null, //already send from computam
@@ -61,6 +60,31 @@ function Sidebar() {
         })
         .catch((e) => console.log(e));
     }
+
+    // const newDomRef = push(ref(db, "forms"));
+    //   set(newDomRef, {
+    //     formId: 1, //already send from computam
+    //     content: roomName, //already send from computam
+    //     options: ["yes", "no"],
+    //   })
+    //     .then(() => {
+    //       alert("added successfully");
+    //     })
+    //     .catch((e) => console.log(e));
+    // }
+
+    // const newDomRef = push(ref(db, "users"));
+    // set(newDomRef, {
+    //   userId: 2, //already send from computam
+    //   userName: roomName, //already send from computam
+    //   userImage:
+    //     "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg",
+    //   //already send from computam
+    // })
+    //   .then(() => {
+    //     alert("added successfully");
+    //   })
+    //   .catch((e) => console.log(e));
   };
 
   return (

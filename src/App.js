@@ -4,12 +4,13 @@ import Sidebar from "./Components/sidebar";
 import PersistentDrawerLeft from "./Components/Drawer";
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import RoomProvider from "./Context/room";
-import { useContext } from "react";
+import { RoomProvider } from "./Context/room";
 
 function App() {
   return (
-    <PersistentDrawerLeft></PersistentDrawerLeft>
+    <RoomProvider>
+      <PersistentDrawerLeft></PersistentDrawerLeft>
+    </RoomProvider>
 
     // <div className="app">
     // <div className="app__body">

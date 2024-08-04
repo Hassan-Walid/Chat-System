@@ -24,16 +24,18 @@ import {
 import app from "../config.js";
 import img from "../images/logo192.png";
 import CloseIcon from "@mui/icons-material/Close";
+import { RoomContext } from "../Context/room.js";
 function Chat({ drawer }) {
   const [input, setInput] = useState("");
   const { roomId } = useParams();
   // const [roomId] = useContext(Room);
-  const [roomName, setRoomName] = useState("");
+  // const [roomName, setRoomName] = useState("");
   const [messagesState, setMessagesState] = useState([]);
   const [currentTime, setTime] = useState("");
   const db = getDatabase(app);
   const storage = getStorage(app);
   const dbRef = ref(db, "chatRooms");
+  const dbFormRef = ref(db, "forms");
   const [roomDBId, setRoomDBId] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
   const [files, setFiles] = useState([]);
@@ -42,13 +44,18 @@ function Chat({ drawer }) {
   const [openImage, setOpenImage] = React.useState(false);
   const [imageData, setImageData] = useState(null);
   const [openSnackbar, setOpenSnackbar] = React.useState(false);
+  const { setRoomName } = useContext(RoomContext);
+
+  // const [formData, setFormData] = useState(null);
 
   const handleAttachFile = (e) => {
     // console.log("ee=", e);
     // console.log("ref", textAreaRef);
     for (let item of e.target.files) {
-      textAreaRef.current.value += item.name + "\n";
-      setFiles([...files, item]);
+      // textAreaRef.current.value += item.name + "\n";
+      // console.log("target", item);
+      // setFiles([...files, item]);
+      setFiles((oldFiles) => [...oldFiles, item]);
       // console.log("item", item.name);
     }
   };
@@ -118,56 +125,80 @@ function Chat({ drawer }) {
     return () => unsubscribe();
   }, [roomDBId]);
 
+  //form
+
+  const getFormData = (formId) => {
+    // console.log(formId);
+    if (formId != null) {
+      const formQuery = query(
+        dbFormRef,
+        orderByChild("formId"),
+        equalTo(formId)
+      );
+      console.log("form", formQuery);
+
+      get(formQuery)
+        .then((snapshot) => {
+          console.log(snapshot);
+          if (snapshot.exists()) {
+            console.log("val =", snapshot.val());
+            // console.log("id=", Object.keys(snapshot.val())[0]);
+            // setRoomDBId(Object.keys(snapshot.val())[0]);
+            // const roomData = Object.values(snapshot.val())[0];
+            // setRoomName(roomData.roomName);
+          } else {
+            console.log("false");
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    }
+  };
+
   const sendMessage = async (e) => {
     // e.preventDefault();
 
     // console.log("ads=", roomDBId);
     const dbRefMessages = ref(db, `chatRooms/${roomDBId}/messages`);
     let newMessageObject;
-    let attachmentFiles;
+    let attachmentFiles = [];
     const snapshot = await get(dbRefMessages);
     let messages = snapshot.val() || [];
     if (files.length > 0) {
       // add attachment obj to msg
+      console.log("f len =", files.length);
+      console.log("filesss", files);
       try {
-        const storageRef = refStorage(storage, `attachments/${files[0].name}`);
-
-        await uploadBytes(storageRef, files[0]);
-
-        const url = await getDownloadURL(storageRef);
-
-        attachmentFiles = {
-          type: files[0].type.startsWith("image/") ? "image" : "file",
-          url: url,
-          name: files[0].name,
-        };
-
-        // newMessageObject = {
-        //   content: {
-        //     type: files[0].type.startsWith("image/") ? "image" : "file",
-        //     url: url,
-        //     name: files[0].name,
-        //   },
-        //   username: "username",
-        //   date: new Date().toLocaleString("en-US", {
-        //     month: "short",
-        //     day: "numeric",
-        //     year: "numeric",
-        //     hour: "numeric",
-        //     minute: "numeric",
-        //     hour12: true,
-        //   }),
-        // };
+        for (let i = 0; i < files.length; i++) {
+          console.log(files[i].name);
+          const storageRef = refStorage(
+            storage,
+            `attachments/${files[i].name}`
+          );
+          await uploadBytes(storageRef, files[i]);
+          const url = await getDownloadURL(storageRef);
+          attachmentFiles.push({
+            type: files[i].type.startsWith("image/") ? "image" : "file",
+            url: url,
+            name: files[i].name,
+          });
+        }
       } catch (e) {
         console.log("error");
         console.log(e);
       }
     }
-
+    console.log("att", attachmentFiles);
     newMessageObject = {
       attachmentFiles,
       content: input.trim(),
-      username: "username",
+      user: {
+        username: "yehia",
+        userId: "1",
+        userImage:
+          "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg",
+      }, // send form computam ???
       date: new Date().toLocaleString("en-US", {
         month: "short",
         day: "numeric",
@@ -206,6 +237,7 @@ function Chat({ drawer }) {
       setMessagesState(messages);
     }
   };
+
   const handleEmoji = () => {
     setOpenEmoji(!openEmoji);
   };
@@ -223,6 +255,7 @@ function Chat({ drawer }) {
     setOpenImage(false);
     setImageData(null);
   };
+  let formData;
   // console.log("scrollllll = ", document.documentElement.scrollHeight);
   return (
     <div className="chat">
@@ -239,15 +272,17 @@ function Chat({ drawer }) {
         {messagesState.map((message) => (
           <div
             className={
-              message.username === "username" ? "chat_message" : "chat_reciver"
+              message.user.username === "yehia"
+                ? "chat_message"
+                : "chat_reciver" // check username
             }
           >
             <Avatar
-              src={img}
+              src={message.user.userImage} // get from context user API
               style={{ marginTop: "2.3%" }}
               sx={
                 ({ width: "40px" },
-                message.username === "username"
+                message.user.username === "yehia"
                   ? { marginLeft: "10px" }
                   : { marginRight: "10px" })
               }
@@ -256,60 +291,70 @@ function Chat({ drawer }) {
             <div className="chat-section">
               <span className="usernameMessage">
                 {/* {console.log("mes", message)} */}
-                {message.username}
+                {message.user.username}
               </span>
 
-              <div
-                className="contentMessage"
-                style={
-                  message.username === "username"
-                    ? { backgroundColor: "#9cb3d1" }
-                    : { backgroundColor: "lightgrey" }
-                }
-              >
-                {message.content && (
-                  <pre
-                    style={{
-                      whiteSpace: "pre-wrap",
+              {message.formId ? (
+                // getFormData(message.formId)
+                <h1>Form</h1>
+              ) : (
+                // <h1>da</h1>
+                <div
+                  className="contentMessage"
+                  style={
+                    message.username === "yehia" //  username of user exist
+                      ? { backgroundColor: "#9cb3d1" }
+                      : { backgroundColor: "lightgrey" }
+                  }
+                >
+                  {message.content && (
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
 
-                      wordWrap: "break-word",
-                      maxWidth: "40rem",
-                    }}
-                  >
-                    {message.content}
-                  </pre>
-                )}
+                        wordWrap: "break-word",
+                        maxWidth: "40rem",
+                      }}
+                    >
+                      {message.content}
+                    </pre>
+                  )}
 
-                {message.attachmentFiles ? (
-                  message.attachmentFiles.type === "image" ? (
-                    <>
-                      <img
-                        src={message.attachmentFiles.url}
-                        alt={message.attachmentFiles.name}
-                        width={200}
-                        onClick={() => {
-                          setImageData({
-                            src: message.attachmentFiles.url,
-                            alt: message.attachmentFiles.name,
-                          });
-                          setOpenImage(true);
-                        }}
-                        style={{ cursor: "pointer", padding: 15 }}
-                      ></img>
-                    </>
-                  ) : (
-                    <>
-                      <a
-                        href={message.attachmentFiles.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {message.attachmentFiles.name}
-                      </a>
-                    </>
-                  )
-                ) : null}
-              </div>
+                  {message.attachmentFiles?.length > 0
+                    ? message.attachmentFiles.map((attach) => {
+                        return attach.type === "image" ? (
+                          <>
+                            <img
+                              src={attach.url}
+                              alt={attach.name}
+                              width={200}
+                              onClick={() => {
+                                setImageData({
+                                  src: attach.url,
+                                  alt: attach.name,
+                                });
+                                setOpenImage(true);
+                              }}
+                              style={{ cursor: "pointer", padding: 15 }}
+                            ></img>
+                          </>
+                        ) : (
+                          <>
+                            <a
+                              href={attach.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="LinkAttach"
+                            >
+                              🔗{attach.name}
+                            </a>
+                          </>
+                        );
+                      })
+                    : null}
+                </div>
+              )}
+
               <span className="timeMessage">{message.date}</span>
             </div>
           </div>
