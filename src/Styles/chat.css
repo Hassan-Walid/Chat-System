@@ -1,6 +1,6 @@
 .chat {
   /* flex: 1; */
-  display: flex;
+  /* display: flex; */
   flex-direction: column;
   /* min-height: 100%; */
 }
@@ -58,7 +58,7 @@
 .chat-section {
   display: flex;
   flex-direction: column;
-  max-width: 30%;
+  max-width: 50%;
 }
 
 .contentMessage {
@@ -97,7 +97,7 @@
   background-color: #3482ba;
   transition: 1s;
 }
-.chatfooter {
+/* .chatfooter {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -107,27 +107,64 @@
   border-top: 1px solid lightgray;
   position: fixed;
   bottom: 0;
+  /* width: 80%; 
+  background-color: #f6f6f6;
+} 
+*/
+.chatfooterWithoutDrawer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  /* justify-content: space-between; */
+  height: 14px;
+  padding: 20px;
+  border-top: 1px solid lightgray;
+  position: fixed;
+  bottom: 0;
   /* width: 80%; */
   background-color: #f6f6f6;
+  width: 98%;
 }
-
-.chatfooter > form {
-  flex: 1;
+.chatfooterWithDrawer {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  /* justify-content: space-between; */
+  height: 14px;
+  padding: 20px;
+  border-top: 1px solid lightgray;
+  position: fixed;
+  bottom: 0;
+  background-color: #f6f6f6;
+  width: 80%;
+}
+.formFooter {
+  /* flex: 15; */
+  display: flex;
+  flex-direction: row;
+  width: 100%;
 }
 
-.chatfooter > form > input {
-  flex: 1;
-  border: none;
-  border-radius: 30px;
-  padding: 10px;
+/* @media (max-width: 1559px) {
+  .chatfooterWithDrawer {
+    width: 78%;
+  }
 }
 
-.chatfooter > form > button {
-  border-radius: 10px;
-  border: 1px solid lightgray;
-  padding: 10px;
-  width: fit-content;
-  margin-left: 5px;
-  display: none;
+@media (max-width: 1400px) {
+  .chatfooterWithDrawer {
+    width: 75%;
+  }
+} */
+
+/* @media (max-width: 1250px) {
+  .chatfooterWithDrawer {
+    width: 72%;
+  }
 }
+
+@media (max-width: 1105px) {
+  .chatfooterWithDrawer {
+    width: 70%;
+  }
+} */

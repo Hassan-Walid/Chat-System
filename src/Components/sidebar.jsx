@@ -1,10 +1,12 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "../Styles/sideBar.css";
 import SearchIcon from "@mui/icons-material/Search";
 import app from "../config.js";
 import { Link } from "react-router-dom";
+import { v4 as uuid } from "uuid";
 
 import { getDatabase, push, ref, set, onChildAdded } from "firebase/database";
+// import { useRenderCount } from "./countRender";
 
 function Sidebar() {
   const db = getDatabase(app);
@@ -15,18 +17,25 @@ function Sidebar() {
 
   // const { roomIdTest, setRoomIdTest } = useContext(RoomProvider);
   // console.log("fe = ", filteredRooms);
-  const handleSearch = (e) => {
-    console.log(e.target.value);
-    handleFliter(e.target.value);
-  };
 
-  const handleFliter = (value) => {
-    setFilteredRooms(
-      rooms.filter((room) =>
-        room.roomName.toLowerCase().includes(value.toLowerCase())
-      )
-    );
-  };
+  const handleFliter = useCallback(
+    (value) => {
+      setFilteredRooms(
+        rooms.filter((room) =>
+          room.roomName.toLowerCase().includes(value.toLowerCase())
+        )
+      );
+    },
+    [rooms]
+  );
+
+  const handleSearch = useCallback(
+    (e) => {
+      console.log(e.target.value);
+      handleFliter(e.target.value);
+    },
+    [handleFliter]
+  );
 
   useEffect(() => {
     //listen when i create a new room
@@ -115,7 +124,7 @@ function Sidebar() {
               //   id={room["roomId"]}
               //   name={room["roomName"]}
               // />
-              <Link to={`/rooms/${room["roomId"]}`}>
+              <Link key={uuid()} to={`/rooms/${room["roomId"]}`}>
                 <div className="chatItemContainer">
                   {/* <img src={require(`./img/${imgId}.jpg`)} alt=''/> */}
                   <div className="chatInfo">

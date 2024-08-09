@@ -1,10 +1,27 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  createRef,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import "../Styles/chat.css";
-import { Avatar, Backdrop, Chip, IconButton, Snackbar } from "@mui/material";
+import {
+  Avatar,
+  Backdrop,
+  Chip,
+  IconButton,
+  Snackbar,
+  Stack,
+} from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
 import { useParams } from "react-router";
 import EmojiPicker from "emoji-picker-react";
+import { v4 as uuid } from "uuid";
+
 import {
   getDatabase,
   ref,
@@ -22,16 +39,19 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 import app from "../config.js";
-import img from "../images/logo192.png";
+
 import CloseIcon from "@mui/icons-material/Close";
 import { RoomContext } from "../Context/room.js";
+
+import { format, toZonedTime } from "date-fns-tz";
+
 function Chat({ drawer }) {
   const [input, setInput] = useState("");
   const { roomId } = useParams();
   // const [roomId] = useContext(Room);
   // const [roomName, setRoomName] = useState("");
   const [messagesState, setMessagesState] = useState([]);
-  const [currentTime, setTime] = useState("");
+
   const db = getDatabase(app);
   const storage = getStorage(app);
   const dbRef = ref(db, "chatRooms");
@@ -45,8 +65,7 @@ function Chat({ drawer }) {
   const [imageData, setImageData] = useState(null);
   const [openSnackbar, setOpenSnackbar] = React.useState(false);
   const { setRoomName } = useContext(RoomContext);
-
-  // const [formData, setFormData] = useState(null);
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const handleAttachFile = (e) => {
     // console.log("ee=", e);
@@ -79,9 +98,21 @@ function Chat({ drawer }) {
       </IconButton>
     </React.Fragment>
   );
+  const refsMessages = useRef(new Map());
+  const { messageRefs, setMessageRefs } = useContext(RoomContext);
+
+  // useEffect(() => {
+  //   console.log("mount");
+  //   setMessageRefs([]);
+  // }, []);
+
   useEffect(() => {
     if (roomId) {
+      refsMessages.current = new Map();
+      setMessagesState([]);
       setFiles([]);
+      setMessageRefs(new Map());
+
       // console.log(roomId);
       const roomQuery = query(dbRef, orderByChild("roomId"), equalTo(+roomId));
 
@@ -111,6 +142,13 @@ function Chat({ drawer }) {
   }, [roomId]);
 
   useEffect(() => {
+    return () => {
+      // Clear the messageRefs array when the component unmounts
+      setMessageRefs(new Map());
+    };
+  }, [setMessageRefs]);
+
+  useEffect(() => {
     setMessagesState([]);
     const dbRefMessages = ref(db, `chatRooms/${roomDBId}/messages`);
     const unsubscribe = onChildAdded(dbRefMessages, (snapshot) => {
@@ -126,35 +164,6 @@ function Chat({ drawer }) {
   }, [roomDBId]);
 
   //form
-
-  const getFormData = (formId) => {
-    // console.log(formId);
-    if (formId != null) {
-      const formQuery = query(
-        dbFormRef,
-        orderByChild("formId"),
-        equalTo(formId)
-      );
-      console.log("form", formQuery);
-
-      get(formQuery)
-        .then((snapshot) => {
-          console.log(snapshot);
-          if (snapshot.exists()) {
-            console.log("val =", snapshot.val());
-            // console.log("id=", Object.keys(snapshot.val())[0]);
-            // setRoomDBId(Object.keys(snapshot.val())[0]);
-            // const roomData = Object.values(snapshot.val())[0];
-            // setRoomName(roomData.roomName);
-          } else {
-            console.log("false");
-          }
-        })
-        .catch((e) => {
-          console.log(e);
-        });
-    }
-  };
 
   const sendMessage = async (e) => {
     // e.preventDefault();
@@ -191,6 +200,7 @@ function Chat({ drawer }) {
     }
     console.log("att", attachmentFiles);
     newMessageObject = {
+      messageId: uuid(),
       attachmentFiles,
       content: input.trim(),
       user: {
@@ -199,14 +209,7 @@ function Chat({ drawer }) {
         userImage:
           "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg",
       }, // send form computam ???
-      date: new Date().toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      }),
+      date: new Date().toISOString(),
     };
 
     if (!newMessageObject.content && files.length > 0) {
@@ -248,17 +251,38 @@ function Chat({ drawer }) {
       sendMessage();
     }
   };
-  const handleOpenImage = () => {
-    setOpenImage(true);
-  };
+
   const handleCloseImage = () => {
     setOpenImage(false);
     setImageData(null);
   };
-  let formData;
+
+  const addToRefsArray = (el, key) => {
+    console.log("ref current : ", refsMessages.current);
+    console.log("refs messages : ", messageRefs);
+
+    if (el) {
+      refsMessages.current.set(key, el);
+      setMessageRefs(refsMessages.current);
+    }
+  };
+
+  const displayTime = (messageTime, userTimeZone) => {
+    const zonedTime = toZonedTime(messageTime, userTimeZone);
+    return format(zonedTime, "yyyy-MM-dd HH:mm", {
+      timeZone: userTimeZone,
+    });
+  };
+
   // console.log("scrollllll = ", document.documentElement.scrollHeight);
+
+  // console.log("refsss", refsMessages.current.length);
+  // refsMessages.current.map((e) => {
+  //   console.log("ref=", e);
+  // });
+
   return (
-    <div className="chat">
+    <Stack className="chat">
       <div className="chatbody">
         {/* {console.log(typeof messages)} */}
 
@@ -269,96 +293,111 @@ function Chat({ drawer }) {
           message="Can't Send Empty Message"
           action={actionSnackbar}
         />
-        {messagesState.map((message) => (
-          <div
-            className={
-              message.user.username === "yehia"
-                ? "chat_message"
-                : "chat_reciver" // check username
-            }
-          >
-            <Avatar
-              src={message.user.userImage} // get from context user API
-              style={{ marginTop: "2.3%" }}
-              sx={
-                ({ width: "40px" },
+        {messagesState.map((message) => {
+          return (
+            <div
+              ref={(el) => {
+                // if (el) {
+                // console.log("el", el);
+                addToRefsArray(el, message.messageId);
+                // }
+              }}
+              key={uuid()}
+              className={
                 message.user.username === "yehia"
-                  ? { marginLeft: "10px" }
-                  : { marginRight: "10px" })
+                  ? "chat_message"
+                  : "chat_reciver" // check username
               }
-            ></Avatar>
+            >
+              <Avatar
+                src={message.user.userImage} // get from context user API
+                style={{ marginTop: "2.3%" }}
+                sx={
+                  ({ width: "40px" },
+                  message.user.username === "yehia"
+                    ? { marginLeft: "10px" }
+                    : { marginRight: "10px" })
+                }
+              ></Avatar>
 
-            <div className="chat-section">
-              <span className="usernameMessage">
-                {/* {console.log("mes", message)} */}
-                {message.user.username}
-              </span>
+              <div className="chat-section">
+                <span className="usernameMessage">
+                  {/* {console.log("mes", message)} */}
+                  {message.user.username}
+                </span>
 
-              {message.formId ? (
-                // getFormData(message.formId)
-                <h1>Form</h1>
-              ) : (
-                // <h1>da</h1>
-                <div
-                  className="contentMessage"
-                  style={
-                    message.username === "yehia" //  username of user exist
-                      ? { backgroundColor: "#9cb3d1" }
-                      : { backgroundColor: "lightgrey" }
-                  }
-                >
-                  {message.content && (
-                    <pre
-                      style={{
-                        whiteSpace: "pre-wrap",
+                {message.formId ? (
+                  // getFormData(message.formId)
+                  <h1>Form</h1>
+                ) : (
+                  // <h1>da</h1>
 
-                        wordWrap: "break-word",
-                        maxWidth: "40rem",
-                      }}
-                    >
-                      {message.content}
-                    </pre>
-                  )}
+                  <div
+                    key={uuid}
+                    className="contentMessage"
+                    style={
+                      message.username === "yehia" //  username of user exist
+                        ? { backgroundColor: "#9cb3d1" }
+                        : { backgroundColor: "lightgrey" }
+                    }
+                  >
+                    {message.content && (
+                      <pre
+                        style={{
+                          whiteSpace: "pre-wrap",
 
-                  {message.attachmentFiles?.length > 0
-                    ? message.attachmentFiles.map((attach) => {
-                        return attach.type === "image" ? (
-                          <>
-                            <img
-                              src={attach.url}
-                              alt={attach.name}
-                              width={200}
-                              onClick={() => {
-                                setImageData({
-                                  src: attach.url,
-                                  alt: attach.name,
-                                });
-                                setOpenImage(true);
-                              }}
-                              style={{ cursor: "pointer", padding: 15 }}
-                            ></img>
-                          </>
-                        ) : (
-                          <>
-                            <a
-                              href={attach.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="LinkAttach"
-                            >
-                              🔗{attach.name}
-                            </a>
-                          </>
-                        );
-                      })
-                    : null}
-                </div>
-              )}
+                          wordWrap: "break-word",
+                          maxWidth: "40rem",
+                        }}
+                      >
+                        {message.content}
+                      </pre>
+                    )}
 
-              <span className="timeMessage">{message.date}</span>
+                    {message.attachmentFiles?.length > 0
+                      ? message.attachmentFiles.map((attach) => {
+                          return attach.type === "image" ? (
+                            <>
+                              <img
+                                key={attach.url}
+                                src={attach.url}
+                                alt={attach.name}
+                                width={200}
+                                onClick={() => {
+                                  setImageData({
+                                    src: attach.url,
+                                    alt: attach.name,
+                                  });
+                                  setOpenImage(true);
+                                }}
+                                style={{ cursor: "pointer", padding: 15 }}
+                              ></img>
+                            </>
+                          ) : (
+                            <>
+                              <a
+                                href={attach.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="LinkAttach"
+                              >
+                                🔗{attach.name}
+                              </a>
+                            </>
+                          );
+                        })
+                      : null}
+                  </div>
+                )}
+
+                <span className="timeMessage">
+                  {displayTime(message.date, userTimeZone)}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
         {imageData && (
           <Backdrop
             sx={{
@@ -399,8 +438,8 @@ function Chat({ drawer }) {
       </div>
 
       <div
-        className="chatfooter"
-        style={drawer ? { width: "80%" } : { width: "98%" }}
+        className={drawer ? "chatfooterWithDrawer" : "chatfooterWithoutDrawer"}
+        // style={drawer ? { width: "80%" } : { width: "98%" }}
       >
         <IconButton onClick={handleEmoji}>
           <InsertEmoticonIcon />
@@ -415,7 +454,7 @@ function Chat({ drawer }) {
             }}
           />
         </div>
-        <form>
+        <form className="formFooter">
           <textarea
             ref={textAreaRef}
             style={{
@@ -423,7 +462,8 @@ function Chat({ drawer }) {
               resize: "none",
               padding: "5px",
               display: "flex",
-              flex: 1,
+              // flex: 1,
+              width: "95%",
               wordWrap: "break-word",
             }}
             rows={2}
@@ -436,22 +476,22 @@ function Chat({ drawer }) {
             }}
             onKeyDown={handlePressEnter}
           />
+          <IconButton>
+            <label htmlFor="fileUpload" style={{ cursor: "pointer" }}>
+              <AttachFileIcon />
+            </label>
+          </IconButton>
+          <input
+            type="file"
+            id="fileUpload"
+            style={{ display: "none" }}
+            onChange={handleAttachFile}
+            multiple
+          />
         </form>
-        <IconButton>
-          <label htmlFor="fileUpload" style={{ cursor: "pointer" }}>
-            <AttachFileIcon />
-          </label>
-        </IconButton>
-        <input
-          type="file"
-          id="fileUpload"
-          style={{ display: "none" }}
-          onChange={handleAttachFile}
-          multiple
-        />
       </div>
-    </div>
+    </Stack>
   );
 }
 
-export default Chat;
+export default memo(Chat);

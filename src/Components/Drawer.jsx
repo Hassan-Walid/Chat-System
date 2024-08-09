@@ -13,6 +13,12 @@ import Sidebar from "./sidebar";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Chat from "./chat";
 import { RoomContext } from "../Context/room";
+import { useRenderCount } from "./countRender";
+import { Menu, MenuItem } from "@mui/material";
+import MoreIcon from "@mui/icons-material/MoreVert";
+import { Search } from "@mui/icons-material";
+import MainAppBar from "./mainAppBar";
+import SearchAppBar from "./searchAppBar";
 
 const drawerWidth = 300;
 
@@ -62,11 +68,13 @@ const DrawerHeader = styled("div")(({ theme }) => ({
 }));
 
 export default function PersistentDrawerLeft() {
-  const { roomName } = React.useContext(RoomContext);
-  React.useEffect(() => {
-    // setState("walid");
-  });
-  // const { state, setState } = React.useContext(RoomContext);
+  const [mainAppBar, setMainAppBar] = React.useState(true);
+  const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const handleClickSearch = () => {
+    setAnchorEl(null);
+  };
+  console.log("counter render = ");
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
 
@@ -85,20 +93,15 @@ export default function PersistentDrawerLeft() {
         open={open}
         style={{ backgroundColor: "#3482ba" }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerOpen}
-            edge="start"
-            sx={{ mr: 2, ...(open && { display: "none" }) }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            {roomName}
-          </Typography>
-        </Toolbar>
+        {mainAppBar ? (
+          <MainAppBar
+            open={open}
+            setOpen={setOpen}
+            setMainAppBar={setMainAppBar}
+          ></MainAppBar>
+        ) : (
+          <SearchAppBar setMainAppBar={setMainAppBar} />
+        )}
       </AppBar>
 
       <Router>

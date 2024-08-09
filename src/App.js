@@ -1,9 +1,7 @@
 import "./App.css";
-import Chat from "./Components/chat";
-import Sidebar from "./Components/sidebar";
+
 import PersistentDrawerLeft from "./Components/Drawer";
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { RoomProvider } from "./Context/room";
 
 function App() {
