@@ -10,23 +10,23 @@ import { getDatabase, push, ref, set, onChildAdded } from "firebase/database";
 
 function Sidebar() {
   const db = getDatabase(app);
-  const dbRef = ref(db, "chatRooms");
+  const dbRef = ref(db, "Threads");
 
-  const [rooms, setRooms] = useState([]);
-  const [filteredRooms, setFilteredRooms] = useState(rooms);
+  const [threads, setThread] = useState([]);
+  const [filteredThreads, setFilteredThreads] = useState(threads);
 
   // const { roomIdTest, setRoomIdTest } = useContext(RoomProvider);
   // console.log("fe = ", filteredRooms);
 
   const handleFliter = useCallback(
     (value) => {
-      setFilteredRooms(
-        rooms.filter((room) =>
-          room.roomName.toLowerCase().includes(value.toLowerCase())
+      setFilteredThreads(
+        threads.filter((thread) =>
+          thread.threadTittle.toLowerCase().includes(value.toLowerCase())
         )
       );
     },
-    [rooms]
+    [threads]
   );
 
   const handleSearch = useCallback(
@@ -36,12 +36,14 @@ function Sidebar() {
     },
     [handleFliter]
   );
-
   useEffect(() => {
     //listen when i create a new room
+    // arrThreadIDs = [];
     const unsubscribe = onChildAdded(dbRef, (snapshot) => {
-      setRooms((prevRooms) => {
-        return [...prevRooms, snapshot.val()];
+      setThread((prevThreads) => {
+        console.log("s=", snapshot.key);
+
+        return [...prevThreads, snapshot.val()];
       });
     });
 
@@ -50,52 +52,51 @@ function Sidebar() {
   }, []);
 
   useEffect(() => {
-    setFilteredRooms(rooms);
-  }, [rooms]);
+    setFilteredThreads(threads);
+  }, [threads]);
 
-  let createRoom = () => {
-    let roomName = prompt("Enter Chat Room Name, please!!..");
+  // let createRoom = () => {
+  //   let roomName = prompt("Enter Chat Room Name, please!!..");
 
-    if (roomName) {
-      const newDomRef = push(ref(db, "chatRooms"));
-      set(newDomRef, {
-        roomId: 21, //already send from computam
-        roomName: roomName, //already send from computam
-        roomMessages: [],
-        roomImage: null, //already send from computam
-      })
-        .then(() => {
-          alert("added successfully");
-        })
-        .catch((e) => console.log(e));
-    }
+  //   if (roomName) {
+  //     const newDomRef = push(ref(db, "chatRooms"));
+  //     set(newDomRef, {
+  //       roomId: 21, //already send from computam
+  //       roomName: roomName, //already send from computam
+  //       roomMessages: [],
+  //       roomImage: null, //already send from computam
+  //     })
+  //       .then(() => {
+  //         alert("added successfully");
+  //       })
+  //       .catch((e) => console.log(e));
+  //   }
 
-    // const newDomRef = push(ref(db, "forms"));
-    //   set(newDomRef, {
-    //     formId: 1, //already send from computam
-    //     content: roomName, //already send from computam
-    //     options: ["yes", "no"],
-    //   })
-    //     .then(() => {
-    //       alert("added successfully");
-    //     })
-    //     .catch((e) => console.log(e));
-    // }
+  //   // const newDomRef = push(ref(db, "forms"));
+  //   //   set(newDomRef, {
+  //   //     formId: 1, //already send from computam
+  //   //     content: roomName, //already send from computam
+  //   //     options: ["yes", "no"],
+  //   //   })
+  //   //     .then(() => {
+  //   //       alert("added successfully");
+  //   //     })
+  //   //     .catch((e) => console.log(e));
+  //   // }
 
-    // const newDomRef = push(ref(db, "users"));
-    // set(newDomRef, {
-    //   userId: 2, //already send from computam
-    //   userName: roomName, //already send from computam
-    //   userImage:
-    //     "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg",
-    //   //already send from computam
-    // })
-    //   .then(() => {
-    //     alert("added successfully");
-    //   })
-    //   .catch((e) => console.log(e));
-  };
-
+  //   // const newDomRef = push(ref(db, "users"));
+  //   // set(newDomRef, {
+  //   //   userId: 2, //already send from computam
+  //   //   userName: roomName, //already send from computam
+  //   //   userImage:
+  //   //     "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg",
+  //   //   //already send from computam
+  //   // })
+  //   //   .then(() => {
+  //   //     alert("added successfully");
+  //   //   })
+  //   //   .catch((e) => console.log(e));
+  // };
   return (
     <div className="sidebar">
       <div className="sidebar__search">
@@ -111,12 +112,8 @@ function Sidebar() {
       </div>
 
       <div className="sidebar__chats">
-        <div className="chatItemContainer" onClick={createRoom}>
-          <h4> ➕ Add New Chat</h4>
-        </div>
-
-        {filteredRooms.length > 0 ? (
-          filteredRooms.map((room) => {
+        {filteredThreads.length > 0 ? (
+          filteredThreads.map((thread) => {
             // console.log(room);
             return (
               // <SidebarChat
@@ -124,11 +121,12 @@ function Sidebar() {
               //   id={room["roomId"]}
               //   name={room["roomName"]}
               // />
-              <Link key={uuid()} to={`/rooms/${room["roomId"]}`}>
+
+              <Link key={uuid()} to={`/threads/${thread.threadId}`}>
                 <div className="chatItemContainer">
-                  {/* <img src={require(`./img/${imgId}.jpg`)} alt=''/> */}
+                  <img src={thread["appImg"]} alt="" />
                   <div className="chatInfo">
-                    <h5> {room["roomName"]} </h5>
+                    <h5> {thread["threadTittle"]} </h5>
                     {/* <p> {messages[messages.length - 1]?.message}</p> */}
                   </div>
                 </div>

@@ -135,7 +135,7 @@ export default function PersistentDrawerLeft() {
         <Main open={open}>
           <Routes>
             <Route
-              path="/rooms/:roomId"
+              path="/threads/:threadId"
               element={<Chat drawer={open} />}
             ></Route>
           </Routes>

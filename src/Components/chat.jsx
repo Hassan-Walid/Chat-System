@@ -47,16 +47,14 @@ import { format, toZonedTime } from "date-fns-tz";
 
 function Chat({ drawer }) {
   const [input, setInput] = useState("");
-  const { roomId } = useParams();
+  const { threadId } = useParams();
   // const [roomId] = useContext(Room);
   // const [roomName, setRoomName] = useState("");
   const [messagesState, setMessagesState] = useState([]);
 
   const db = getDatabase(app);
   const storage = getStorage(app);
-  const dbRef = ref(db, "chatRooms");
-  const dbFormRef = ref(db, "forms");
-  const [roomDBId, setRoomDBId] = useState("");
+  const dbRef = ref(db, "Threads");
   const [openEmoji, setOpenEmoji] = useState(false);
   const [files, setFiles] = useState([]);
   const bottomRef = useRef(null);
@@ -102,44 +100,39 @@ function Chat({ drawer }) {
   const { messageRefs, setMessageRefs } = useContext(RoomContext);
 
   // useEffect(() => {
-  //   console.log("mount");
-  //   setMessageRefs([]);
-  // }, []);
+  //   if (threadId) {
+  //     refsMessages.current = new Map();
+  //     setMessagesState([]);
+  //     setFiles([]);
+  //     setMessageRefs(new Map());
 
-  useEffect(() => {
-    if (roomId) {
-      refsMessages.current = new Map();
-      setMessagesState([]);
-      setFiles([]);
-      setMessageRefs(new Map());
+  //     // console.log(roomId);
+  //     // const roomQuery = query(dbRef, orderByChild("roomId"), equalTo(roomId));
 
-      // console.log(roomId);
-      const roomQuery = query(dbRef, orderByChild("roomId"), equalTo(+roomId));
-
-      get(roomQuery)
-        .then((snapshot) => {
-          // console.log(snapshot);
-          if (snapshot.exists()) {
-            // console.log("val =", snapshot.val());
-            // console.log("id=", Object.keys(snapshot.val())[0]);
-            setRoomDBId(Object.keys(snapshot.val())[0]);
-            const roomData = Object.values(snapshot.val())[0];
-            setRoomName(roomData.roomName);
-            if (roomData.messages) {
-              // console.log(roomData.messages);
-              setMessagesState(roomData.messages);
-            } else {
-              setMessagesState([]);
-            }
-          } else {
-            // console.log("false");
-          }
-        })
-        .catch((e) => {
-          console.log(e);
-        });
-    }
-  }, [roomId]);
+  //     get(roomQuery)
+  //       .then((snapshot) => {
+  //         // console.log(snapshot);
+  //         if (snapshot.exists()) {
+  //           // console.log("val =", snapshot.val());
+  //           // console.log("id=", Object.keys(snapshot.val())[0]);
+  //           setRoomDBId(Object.keys(snapshot.val())[0]);
+  //           const roomData = Object.values(snapshot.val())[0];
+  //           setRoomName(roomData.roomName);
+  //           if (roomData.messages) {
+  //             // console.log(roomData.messages);
+  //             setMessagesState(roomData.messages);
+  //           } else {
+  //             setMessagesState([]);
+  //           }
+  //         } else {
+  //           // console.log("false");
+  //         }
+  //       })
+  //       .catch((e) => {
+  //         console.log(e);
+  //       });
+  //   }
+  // }, [roomId]);
 
   useEffect(() => {
     return () => {
@@ -149,8 +142,21 @@ function Chat({ drawer }) {
   }, [setMessageRefs]);
 
   useEffect(() => {
+    const getTitleThread = async () => {
+      const dbRefThread = ref(db, `Threads/${threadId}`);
+      const snapshot = await get(dbRefThread);
+      if (snapshot.exists()) {
+        const threadData = snapshot.val();
+        setRoomName(threadData.threadTittle);
+      }
+    };
+    getTitleThread();
+  }, [threadId]);
+  useEffect(() => {
+    refsMessages.current = new Map();
     setMessagesState([]);
-    const dbRefMessages = ref(db, `chatRooms/${roomDBId}/messages`);
+
+    const dbRefMessages = ref(db, `Threads/${threadId}/messages`);
     const unsubscribe = onChildAdded(dbRefMessages, (snapshot) => {
       setMessagesState((prevMessages) => {
         // console.log("prev", prevMessages);
@@ -161,7 +167,7 @@ function Chat({ drawer }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     // Clean up the listener on unmount
     return () => unsubscribe();
-  }, [roomDBId]);
+  }, [threadId]);
 
   //form
 
@@ -169,7 +175,7 @@ function Chat({ drawer }) {
     // e.preventDefault();
 
     // console.log("ads=", roomDBId);
-    const dbRefMessages = ref(db, `chatRooms/${roomDBId}/messages`);
+    const dbRefMessages = ref(db, `Threads/${threadId}/messages`);
     let newMessageObject;
     let attachmentFiles = [];
     const snapshot = await get(dbRefMessages);
