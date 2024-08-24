@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import "../Styles/sideBar.css";
 import SearchIcon from "@mui/icons-material/Search";
 import app from "../config.js";
@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 
 import { getDatabase, push, ref, set, onChildAdded } from "firebase/database";
+import { RoomContext } from "../Context/room.js";
 // import { useRenderCount } from "./countRender";
 
 function Sidebar() {
@@ -14,6 +15,7 @@ function Sidebar() {
 
   const [threads, setThread] = useState([]);
   const [filteredThreads, setFilteredThreads] = useState(threads);
+  const { currentUser } = useContext(RoomContext);
 
   // const { roomIdTest, setRoomIdTest } = useContext(RoomProvider);
   // console.log("fe = ", filteredRooms);
@@ -42,8 +44,19 @@ function Sidebar() {
     const unsubscribe = onChildAdded(dbRef, (snapshot) => {
       setThread((prevThreads) => {
         console.log("s=", snapshot.key);
-
-        return [...prevThreads, snapshot.val()];
+        console.log("ssssss=", snapshot.val().users);
+        if (
+          snapshot.val().users.find((user) => {
+            if (user.userId === currentUser.userId) {
+              return true;
+            }
+            return false;
+          })
+        ) {
+          return [...prevThreads, snapshot.val()];
+        } else {
+          return [...prevThreads];
+        }
       });
     });
 
@@ -124,7 +137,11 @@ function Sidebar() {
 
               <Link key={uuid()} to={`/threads/${thread.threadId}`}>
                 <div className="chatItemContainer">
-                  <img src={thread["appImg"]} alt="" />
+                  <img
+                    src={thread["owner"]["appImg"]}
+                    alt=""
+                    style={{ borderRadius: "15px" }}
+                  />
                   <div className="chatInfo">
                     <h5> {thread["threadTittle"]} </h5>
                     {/* <p> {messages[messages.length - 1]?.message}</p> */}

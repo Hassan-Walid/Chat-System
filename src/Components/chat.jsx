@@ -11,8 +11,17 @@ import "../Styles/chat.css";
 import {
   Avatar,
   Backdrop,
+  Button,
+  ButtonGroup,
+  Checkbox,
   Chip,
+  FormControl,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
   IconButton,
+  Radio,
+  RadioGroup,
   Snackbar,
   Stack,
 } from "@mui/material";
@@ -44,6 +53,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { RoomContext } from "../Context/room.js";
 
 import { format, toZonedTime } from "date-fns-tz";
+import { Room } from "@mui/icons-material";
 
 function Chat({ drawer }) {
   const [input, setInput] = useState("");
@@ -64,6 +74,8 @@ function Chat({ drawer }) {
   const [openSnackbar, setOpenSnackbar] = React.useState(false);
   const { setRoomName } = useContext(RoomContext);
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { currentUser } = useContext(RoomContext);
+  console.log("current User = ", currentUser);
 
   const handleAttachFile = (e) => {
     // console.log("ee=", e);
@@ -180,6 +192,7 @@ function Chat({ drawer }) {
     let attachmentFiles = [];
     const snapshot = await get(dbRefMessages);
     let messages = snapshot.val() || [];
+    console.log("messages", messages);
     if (files.length > 0) {
       // add attachment obj to msg
       console.log("f len =", files.length);
@@ -206,14 +219,15 @@ function Chat({ drawer }) {
     }
     console.log("att", attachmentFiles);
     newMessageObject = {
-      messageId: uuid(),
+      // messageId: uuid(),
       attachmentFiles,
       content: input.trim(),
-      user: {
-        username: "yehia",
-        userId: "1",
-        userImage:
-          "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg",
+      typeContent: "text",
+      sender: {
+        senderName: currentUser.username,
+        senderId: currentUser.userId,
+        senderImage: currentUser.userImg,
+        type: "user",
       }, // send form computam ???
       date: new Date().toISOString(),
     };
@@ -234,6 +248,7 @@ function Chat({ drawer }) {
       // no send content and att
       setOpenSnackbar(true);
     } else {
+      console.log("type of =", messages.constructor.name);
       messages.push(newMessageObject);
       await set(dbRefMessages, messages);
       setInput("");
@@ -264,8 +279,8 @@ function Chat({ drawer }) {
   };
 
   const addToRefsArray = (el, key) => {
-    console.log("ref current : ", refsMessages.current);
-    console.log("refs messages : ", messageRefs);
+    // console.log("ref current : ", refsMessages.current);
+    // console.log("refs messages : ", messageRefs);
 
     if (el) {
       refsMessages.current.set(key, el);
@@ -310,17 +325,17 @@ function Chat({ drawer }) {
               }}
               key={uuid()}
               className={
-                message.user.username === "yehia"
+                message.sender.senderName === currentUser.username
                   ? "chat_message"
                   : "chat_reciver" // check username
               }
             >
               <Avatar
-                src={message.user.userImage} // get from context user API
+                src={message.sender.senderImage} // get from context user API
                 style={{ marginTop: "2.3%" }}
                 sx={
                   ({ width: "40px" },
-                  message.user.username === "yehia"
+                  message.sender.senderName === currentUser.username
                     ? { marginLeft: "10px" }
                     : { marginRight: "10px" })
                 }
@@ -329,72 +344,119 @@ function Chat({ drawer }) {
               <div className="chat-section">
                 <span className="usernameMessage">
                   {/* {console.log("mes", message)} */}
-                  {message.user.username}
+                  {message.sender.senderName}
                 </span>
 
-                {message.formId ? (
-                  // getFormData(message.formId)
-                  <h1>Form</h1>
-                ) : (
-                  // <h1>da</h1>
+                <div
+                  key={uuid}
+                  className="contentMessage"
+                  style={
+                    message.senderName === currentUser.username //  username of user exist
+                      ? { backgroundColor: "#9cb3d1" }
+                      : { backgroundColor: "lightgrey" }
+                  }
+                >
+                  {message.content &&
+                  message.content.constructor.name === "Object" ? (
+                    message.type === "radio" ? (
+                      <FormControl style={{ padding: "20px" }}>
+                        <FormLabel id="demo-radio-buttons-group-label">
+                          {message.content.formQuestion}
+                        </FormLabel>
+                        <RadioGroup
+                          aria-labelledby="demo-radio-buttons-group-label"
+                          defaultValue="female"
+                          name="radio-buttons-group"
+                        >
+                          {message.content.options.map((option) => (
+                            <FormControlLabel
+                              value={option}
+                              control={<Radio />}
+                              label={option}
+                            />
+                          ))}
+                        </RadioGroup>
+                        <input
+                          type="submit"
+                          style={{ borderColor: "#3482ba", cursor: "pointer" }}
+                          className="LinkAttach"
+                          onClick={() => {
+                            console.log("clk");
+                          }}
+                        ></input>
+                      </FormControl>
+                    ) : (
+                      <FormControl style={{ padding: "20px" }}>
+                        <FormLabel id="demo-radio-buttons-group-label">
+                          {message.content.formQuestion}
+                        </FormLabel>
+                        <FormGroup aria-label="position">
+                          {message.content.options.map((option) => (
+                            <FormControlLabel
+                              value={option}
+                              control={<Checkbox />}
+                              label={option}
+                              labelPlacement="end"
+                            />
+                          ))}
+                        </FormGroup>
+                        <input
+                          type="submit"
+                          style={{ borderColor: "#3482ba", cursor: "pointer" }}
+                          className="LinkAttach"
+                          onClick={() => {
+                            console.log("clk");
+                          }}
+                        ></input>
+                      </FormControl>
+                    )
+                  ) : (
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
 
-                  <div
-                    key={uuid}
-                    className="contentMessage"
-                    style={
-                      message.username === "yehia" //  username of user exist
-                        ? { backgroundColor: "#9cb3d1" }
-                        : { backgroundColor: "lightgrey" }
-                    }
-                  >
-                    {message.content && (
-                      <pre
-                        style={{
-                          whiteSpace: "pre-wrap",
+                        wordWrap: "break-word",
+                        maxWidth: "40rem",
+                      }}
+                    >
+                      {message.content}
+                    </pre>
+                  )}
 
-                          wordWrap: "break-word",
-                          maxWidth: "40rem",
-                        }}
-                      >
-                        {message.content}
-                      </pre>
-                    )}
-
-                    {message.attachmentFiles?.length > 0
-                      ? message.attachmentFiles.map((attach) => {
-                          return attach.type === "image" ? (
-                            <>
-                              <img
-                                key={attach.url}
-                                src={attach.url}
-                                alt={attach.name}
-                                width={200}
-                                onClick={() => {
-                                  setImageData({
-                                    src: attach.url,
-                                    alt: attach.name,
-                                  });
-                                  setOpenImage(true);
-                                }}
-                                style={{ cursor: "pointer", padding: 15 }}
-                              ></img>
-                            </>
-                          ) : (
-                            <>
-                              <a
-                                href={attach.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="LinkAttach"
-                              >
-                                🔗{attach.name}
-                              </a>
-                            </>
-                          );
-                        })
-                      : null}
-                  </div>
-                )}
+                  {message.attachmentFiles?.length > 0
+                    ? message.attachmentFiles.map((attach) => {
+                        return attach.type === "image" ? (
+                          <>
+                            <img
+                              key={attach.url}
+                              src={attach.url}
+                              alt={attach.name}
+                              width={200}
+                              onClick={() => {
+                                setImageData({
+                                  src: attach.url,
+                                  alt: attach.name,
+                                });
+                                setOpenImage(true);
+                              }}
+                              style={{ cursor: "pointer", padding: 15 }}
+                            ></img>
+                          </>
+                        ) : (
+                          <>
+                            <a
+                              href={attach.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="LinkAttach"
+                            >
+                              🔗{attach.name}
+                            </a>
+                          </>
+                        );
+                      })
+                    : null}
+                </div>
 
                 <span className="timeMessage">
                   {displayTime(message.date, userTimeZone)}
