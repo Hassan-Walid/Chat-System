@@ -27,7 +27,7 @@ import {
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
-import { useParams } from "react-router";
+import { Await, useParams } from "react-router";
 import EmojiPicker from "emoji-picker-react";
 import { v4 as uuid } from "uuid";
 
@@ -40,6 +40,7 @@ import {
   equalTo,
   set,
   onChildAdded,
+  update,
 } from "firebase/database";
 import {
   getStorage,
@@ -75,6 +76,9 @@ function Chat({ drawer }) {
   const { setRoomName } = useContext(RoomContext);
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { currentUser } = useContext(RoomContext);
+  const [optionsSelected, setOptionsSelected] = useState([]);
+
+  // const [disabledForm,setDisabledForm]
   console.log("current User = ", currentUser);
 
   const handleAttachFile = (e) => {
@@ -108,6 +112,38 @@ function Chat({ drawer }) {
       </IconButton>
     </React.Fragment>
   );
+
+  const handleSubmitForm = async (formId) => {
+    console.log("value ==", optionsSelected);
+    const refsMessages = ref(db, `Threads/${threadId}/messages`);
+
+    const snapshot = await get(refsMessages);
+    if (snapshot.exists()) {
+      let messagesArr = snapshot.val() || [];
+      let messageIndex;
+      messagesArr.forEach((message, index) => {
+        if (message.content?.formId === formId) {
+          messageIndex = index;
+        }
+      });
+
+      const updates = {};
+      updates[
+        `Threads/${threadId}/messages/${messageIndex}/content/disable`
+      ] = true;
+
+      await update(ref(db, `/`), updates);
+
+      sendMessage(
+        optionsSelected.constructor.name === "Array"
+          ? optionsSelected.join(",")
+          : optionsSelected
+      );
+    }
+
+    // messageContainForm.disable=true;
+    // messagesArr =[...messagesArr,messageContainForm];
+  };
   const refsMessages = useRef(new Map());
   const { messageRefs, setMessageRefs } = useContext(RoomContext);
 
@@ -164,7 +200,9 @@ function Chat({ drawer }) {
     };
     getTitleThread();
   }, [threadId]);
+
   useEffect(() => {
+    // console.log("useEffect");
     refsMessages.current = new Map();
     setMessagesState([]);
 
@@ -183,7 +221,7 @@ function Chat({ drawer }) {
 
   //form
 
-  const sendMessage = async (e) => {
+  const sendMessage = async (options) => {
     // e.preventDefault();
 
     // console.log("ads=", roomDBId);
@@ -221,7 +259,7 @@ function Chat({ drawer }) {
     newMessageObject = {
       // messageId: uuid(),
       attachmentFiles,
-      content: input.trim(),
+      content: options || input.trim(),
       typeContent: "text",
       sender: {
         senderName: currentUser.username,
@@ -359,14 +397,18 @@ function Chat({ drawer }) {
                   {message.content &&
                   message.content.constructor.name === "Object" ? (
                     message.type === "radio" ? (
-                      <FormControl style={{ padding: "20px" }}>
+                      <FormControl
+                        disabled={message.content.disable}
+                        style={{ padding: "20px" }}
+                      >
                         <FormLabel id="demo-radio-buttons-group-label">
                           {message.content.formQuestion}
                         </FormLabel>
                         <RadioGroup
                           aria-labelledby="demo-radio-buttons-group-label"
-                          defaultValue="female"
                           name="radio-buttons-group"
+                          onChange={(e) => setOptionsSelected(e.target.value)}
+                          value={optionsSelected}
                         >
                           {message.content.options.map((option) => (
                             <FormControlLabel
@@ -377,16 +419,20 @@ function Chat({ drawer }) {
                           ))}
                         </RadioGroup>
                         <input
+                          hidden={message.content.disable}
+                          onClick={() =>
+                            handleSubmitForm(message?.content?.formId ?? "0")
+                          }
                           type="submit"
                           style={{ borderColor: "#3482ba", cursor: "pointer" }}
                           className="LinkAttach"
-                          onClick={() => {
-                            console.log("clk");
-                          }}
                         ></input>
                       </FormControl>
                     ) : (
-                      <FormControl style={{ padding: "20px" }}>
+                      <FormControl
+                        disabled={message.content.disable}
+                        style={{ padding: "20px" }}
+                      >
                         <FormLabel id="demo-radio-buttons-group-label">
                           {message.content.formQuestion}
                         </FormLabel>
@@ -401,12 +447,11 @@ function Chat({ drawer }) {
                           ))}
                         </FormGroup>
                         <input
+                          hidden={message.content.disable}
+                          onClick={message?.content?.formId ?? "0"}
                           type="submit"
                           style={{ borderColor: "#3482ba", cursor: "pointer" }}
                           className="LinkAttach"
-                          onClick={() => {
-                            console.log("clk");
-                          }}
                         ></input>
                       </FormControl>
                     )
