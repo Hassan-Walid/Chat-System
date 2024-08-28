@@ -55,6 +55,7 @@ import { RoomContext } from "../Context/room.js";
 
 import { format, toZonedTime } from "date-fns-tz";
 import { Room } from "@mui/icons-material";
+import axios from "axios";
 
 function Chat({ drawer }) {
   const [input, setInput] = useState("");
@@ -115,30 +116,32 @@ function Chat({ drawer }) {
 
   const handleSubmitForm = async (formId) => {
     console.log("value ==", optionsSelected);
-    const refsMessages = ref(db, `Threads/${threadId}/messages`);
-    const snapshot = await get(refsMessages);
-    if (snapshot.exists()) {
-      let messagesArr = snapshot.val() || [];
-      let messageIndex;
-      messagesArr.forEach((message, index) => {
-        if (message.content?.formId === formId) {
-          messageIndex = index;
-        }
-      });
+    if (optionsSelected.length > 0) {
+      const refsMessages = ref(db, `Threads/${threadId}/messages`);
+      const snapshot = await get(refsMessages);
+      if (snapshot.exists()) {
+        let messagesArr = snapshot.val() || [];
+        let messageIndex;
+        messagesArr.forEach((message, index) => {
+          if (message.content?.formId === formId) {
+            messageIndex = index;
+          }
+        });
 
-      const updates = {};
-      updates[
-        `Threads/${threadId}/messages/${messageIndex}/content/disable`
-      ] = true;
+        const updates = {};
+        updates[
+          `Threads/${threadId}/messages/${messageIndex}/content/disable`
+        ] = true;
 
-      await update(ref(db, `/`), updates);
-
-      sendMessage(
-        optionsSelected.constructor.name === "Array"
-          ? optionsSelected.join(",")
-          : optionsSelected
-      );
+        await update(ref(db, `/`), updates);
+      }
     }
+    sendMessage(
+      optionsSelected.constructor.name === "Array"
+        ? optionsSelected.join(",")
+        : optionsSelected
+    );
+    setOptionsSelected([]);
 
     // messageContainForm.disable=true;
     // messagesArr =[...messagesArr,messageContainForm];
@@ -296,6 +299,11 @@ function Chat({ drawer }) {
         behavior: "smooth",
       });
       setMessagesState(messages);
+      newMessageObject = { ...newMessageObject, threadId };
+      axios.post(
+        `${process.env.REACT_APP_Chat_APP_API_URL}/messages/userSend`,
+        newMessageObject
+      );
     }
   };
 
@@ -338,6 +346,17 @@ function Chat({ drawer }) {
   // refsMessages.current.map((e) => {
   //   console.log("ref=", e);
   // });
+  const handleCheckboxChange = (event) => {
+    const { name, checked } = event.target;
+
+    if (checked) {
+      // Add the item to the array if it is checked
+      setOptionsSelected([...optionsSelected, name]);
+    } else {
+      // Remove the item from the array if it is unchecked
+      setOptionsSelected(optionsSelected.filter((item) => item !== name));
+    }
+  };
 
   return (
     <Stack className="chat">
@@ -437,35 +456,44 @@ function Chat({ drawer }) {
                         </FormLabel>
                         <FormGroup aria-label="position">
                           {message.content.options.map((option) => (
-                              <FormControlLabel
+                            <FormControlLabel
                               control={
                                 <Checkbox
-                                  value={option}
-                                  onChange={(e)=>{
-                                    let found = false;
-                                    optionsSelected.forEach((item,index)=>{
-                                      console.log("item", item);
-                                      if(item === e.target.value)
-                                      {
-                                        console.log("inininininininin");
-                                        optionsSelected.splice(index,1);
-                                        found=true;                                        
-                                      }
-                                    })
-                                    !found ?  setOptionsSelected([...optionsSelected, e.target.value])
-                                    :                
-                                    setOptionsSelected(optionsSelected);
-                                    console.log("check box: " ,optionsSelected,);
-                                  }}
+                                  name={option}
+                                  checked={optionsSelected.includes(option)}
+                                  // onChange={(e) => {
+                                  //   let found = false;
+                                  //   // optionsSelected.forEach((item, index) => {
+                                  //   //   console.log("item", item);
+                                  //   //   if (item === e.target.value) {
+                                  //   //     console.log("inininininininin");
+                                  //   //     optionsSelected.splice(index, 1);
+                                  //   //     found = true;
+                                  //   //   }
+                                  //   // });
+                                  //   // !found
+                                  //   //   ?
+                                  //   setOptionsSelected([
+                                  //     ...optionsSelected,
+                                  //     e.target.value,
+                                  //   ]);
+                                  //   // : setOptionsSelected([
+                                  //   //     ...optionsSelected,
+                                  //   //   ]);
+                                  //   console.log("check box: ", optionsSelected);
+                                  // }}
+                                  onChange={handleCheckboxChange}
                                 />
                               }
                               label={option}
-                            />                          
+                            />
                           ))}
                         </FormGroup>
                         <input
                           hidden={message.content.disable}
-                          onClick={()=>handleSubmitForm(message?.content?.formId ?? "0")}
+                          onClick={() =>
+                            handleSubmitForm(message?.content?.formId ?? "0")
+                          }
                           type="submit"
                           style={{ borderColor: "#3482ba", cursor: "pointer" }}
                           className="LinkAttach"
