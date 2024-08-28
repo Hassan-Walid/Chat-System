@@ -116,7 +116,6 @@ function Chat({ drawer }) {
   const handleSubmitForm = async (formId) => {
     console.log("value ==", optionsSelected);
     const refsMessages = ref(db, `Threads/${threadId}/messages`);
-
     const snapshot = await get(refsMessages);
     if (snapshot.exists()) {
       let messagesArr = snapshot.val() || [];
@@ -438,17 +437,35 @@ function Chat({ drawer }) {
                         </FormLabel>
                         <FormGroup aria-label="position">
                           {message.content.options.map((option) => (
-                            <FormControlLabel
-                              value={option}
-                              control={<Checkbox />}
+                              <FormControlLabel
+                              control={
+                                <Checkbox
+                                  value={option}
+                                  onChange={(e)=>{
+                                    let found = false;
+                                    optionsSelected.forEach((item,index)=>{
+                                      console.log("item", item);
+                                      if(item === e.target.value)
+                                      {
+                                        console.log("inininininininin");
+                                        optionsSelected.splice(index,1);
+                                        found=true;                                        
+                                      }
+                                    })
+                                    !found ?  setOptionsSelected([...optionsSelected, e.target.value])
+                                    :                
+                                    setOptionsSelected(optionsSelected);
+                                    console.log("check box: " ,optionsSelected,);
+                                  }}
+                                />
+                              }
                               label={option}
-                              labelPlacement="end"
-                            />
+                            />                          
                           ))}
                         </FormGroup>
                         <input
                           hidden={message.content.disable}
-                          onClick={message?.content?.formId ?? "0"}
+                          onClick={()=>handleSubmitForm(message?.content?.formId ?? "0")}
                           type="submit"
                           style={{ borderColor: "#3482ba", cursor: "pointer" }}
                           className="LinkAttach"
