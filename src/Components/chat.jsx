@@ -1,18 +1,8 @@
-import React, {
-  createRef,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { memo, useContext, useEffect, useRef, useState } from "react";
 import "../Styles/chat.css";
 import {
   Avatar,
   Backdrop,
-  Button,
-  ButtonGroup,
   Checkbox,
   Chip,
   FormControl,
@@ -27,7 +17,7 @@ import {
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
-import { Await, useParams } from "react-router";
+import { useParams } from "react-router";
 import EmojiPicker from "emoji-picker-react";
 import { v4 as uuid } from "uuid";
 
@@ -35,9 +25,6 @@ import {
   getDatabase,
   ref,
   get,
-  query,
-  orderByChild,
-  equalTo,
   set,
   onChildAdded,
   update,
@@ -47,6 +34,7 @@ import {
   ref as refStorage,
   uploadBytes,
   getDownloadURL,
+  getMetadata,
 } from "firebase/storage";
 import app from "../config.js";
 
@@ -54,7 +42,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import { RoomContext } from "../Context/room.js";
 
 import { format, toZonedTime } from "date-fns-tz";
-import { Room } from "@mui/icons-material";
 import axios from "axios";
 
 function Chat({ drawer }) {
@@ -147,42 +134,7 @@ function Chat({ drawer }) {
     // messagesArr =[...messagesArr,messageContainForm];
   };
   const refsMessages = useRef(new Map());
-  const { messageRefs, setMessageRefs } = useContext(RoomContext);
-
-  // useEffect(() => {
-  //   if (threadId) {
-  //     refsMessages.current = new Map();
-  //     setMessagesState([]);
-  //     setFiles([]);
-  //     setMessageRefs(new Map());
-
-  //     // console.log(roomId);
-  //     // const roomQuery = query(dbRef, orderByChild("roomId"), equalTo(roomId));
-
-  //     get(roomQuery)
-  //       .then((snapshot) => {
-  //         // console.log(snapshot);
-  //         if (snapshot.exists()) {
-  //           // console.log("val =", snapshot.val());
-  //           // console.log("id=", Object.keys(snapshot.val())[0]);
-  //           setRoomDBId(Object.keys(snapshot.val())[0]);
-  //           const roomData = Object.values(snapshot.val())[0];
-  //           setRoomName(roomData.roomName);
-  //           if (roomData.messages) {
-  //             // console.log(roomData.messages);
-  //             setMessagesState(roomData.messages);
-  //           } else {
-  //             setMessagesState([]);
-  //           }
-  //         } else {
-  //           // console.log("false");
-  //         }
-  //       })
-  //       .catch((e) => {
-  //         console.log(e);
-  //       });
-  //   }
-  // }, [roomId]);
+  const { setMessageRefs } = useContext(RoomContext);
 
   useEffect(() => {
     return () => {
@@ -234,23 +186,51 @@ function Chat({ drawer }) {
     let messages = snapshot.val() || [];
     console.log("messages", messages);
     if (files.length > 0) {
-      // add attachment obj to msg
-      console.log("f len =", files.length);
-      console.log("filesss", files);
+      // get current size from real time DB
+      const refThreadConfig = ref(db, `Threads/${threadId}/configuration`);
+      const snapshot = await get(refThreadConfig);
+      let threadConfig = null;
+      if (snapshot.exists()) {
+        threadConfig = snapshot.val() ?? null;
+      }
+      console.log("thread = ", threadConfig);
       try {
         for (let i = 0; i < files.length; i++) {
           console.log(files[i].name);
-          const storageRef = refStorage(
-            storage,
-            `attachments/${files[i].name}`
-          );
-          await uploadBytes(storageRef, files[i]);
-          const url = await getDownloadURL(storageRef);
-          attachmentFiles.push({
-            type: files[i].type.startsWith("image/") ? "image" : "file",
-            url: url,
-            name: files[i].name,
-          });
+          let storageRef = refStorage(storage, `attachments/${files[i].name}`);
+          let MetaDataFile = await getMetadata(storageRef);
+          let FileSizeMB = MetaDataFile.size / (1000 * 1000);
+
+          console.log("FileSizeMB", FileSizeMB);
+          // console.log("in then");
+          if (
+            threadConfig.totalFileStorageUsedMB + FileSizeMB <=
+            threadConfig.totalFileStorageLimitMB
+          ) {
+            // upload file in storage > code below
+            console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+            await uploadBytes(storageRef, files[i]);
+            const url = await getDownloadURL(storageRef);
+            console.log("url", url);
+            attachmentFiles.push({
+              type: files[i].type.startsWith("image/") ? "image" : "file",
+              url: url,
+              name: files[i].name,
+            });
+            console.log("attachmentFiles", attachmentFiles);
+            // update totalFileStorageUsedMB in real time DB
+            const updates = {};
+            updates[
+              `/Threads/${threadId}/configuration/totalFileStorageUsedMB`
+            ] = threadConfig.totalFileStorageUsedMB + FileSizeMB;
+            await update(ref(db, `/`), updates);
+          } else {
+            console.log("else of snack");
+            setOpenSnackbar(true);
+            setFiles([]);
+            return;
+          }
+          // else {snack bar > The allowed files size for this thread is over, You can't send files any more!! }
         }
       } catch (e) {
         console.log("error");
@@ -306,7 +286,6 @@ function Chat({ drawer }) {
       );
     }
   };
-
   const handleEmoji = () => {
     setOpenEmoji(!openEmoji);
   };
