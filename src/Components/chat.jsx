@@ -53,7 +53,6 @@ function Chat({ drawer }) {
 
   const db = getDatabase(app);
   const storage = getStorage(app);
-  const dbRef = ref(db, "Threads");
   const [openEmoji, setOpenEmoji] = useState(false);
   const [files, setFiles] = useState([]);
   const bottomRef = useRef(null);
@@ -70,6 +69,7 @@ function Chat({ drawer }) {
   console.log("current User = ", currentUser);
 
   const handleAttachFile = (e) => {
+    setFiles([]);
     // console.log("ee=", e);
     // console.log("ref", textAreaRef);
     for (let item of e.target.files) {
@@ -186,6 +186,8 @@ function Chat({ drawer }) {
     let messages = snapshot.val() || [];
     console.log("messages", messages);
     if (files.length > 0) {
+      console.log("before send =", files);
+
       // get current size from real time DB
       const refThreadConfig = ref(db, `Threads/${threadId}/configuration`);
       const snapshot = await get(refThreadConfig);
@@ -198,8 +200,9 @@ function Chat({ drawer }) {
         for (let i = 0; i < files.length; i++) {
           console.log(files[i].name);
           let storageRef = refStorage(storage, `attachments/${files[i].name}`);
-          let MetaDataFile = await getMetadata(storageRef);
-          let FileSizeMB = MetaDataFile.size / (1000 * 1000);
+          // let MetaDataFile = await getMetadata(storageRef);
+          // let FileSizeMB = MetaDataFile.size / (1000 * 1000);
+          let FileSizeMB = files[i].size / (1024 * 1024);
 
           console.log("FileSizeMB", FileSizeMB);
           // console.log("in then");
@@ -208,7 +211,7 @@ function Chat({ drawer }) {
             threadConfig.totalFileStorageLimitMB
           ) {
             // upload file in storage > code below
-            console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+
             await uploadBytes(storageRef, files[i]);
             const url = await getDownloadURL(storageRef);
             console.log("url", url);
@@ -268,11 +271,11 @@ function Chat({ drawer }) {
       // no send content and att
       setOpenSnackbar(true);
     } else {
-      console.log("type of =", messages.constructor.name);
       messages.push(newMessageObject);
       await set(dbRefMessages, messages);
       setInput("");
       setFiles([]);
+      console.log("after send =", files);
       textAreaRef.current.value = "";
       window.scrollTo({
         top: document.documentElement.scrollHeight,
@@ -341,7 +344,6 @@ function Chat({ drawer }) {
     <Stack className="chat">
       <div className="chatbody">
         {/* {console.log(typeof messages)} */}
-
         <Snackbar
           open={openSnackbar}
           autoHideDuration={6000}
@@ -534,7 +536,6 @@ function Chat({ drawer }) {
             </div>
           );
         })}
-
         {imageData && (
           <Backdrop
             sx={{
@@ -552,8 +553,8 @@ function Chat({ drawer }) {
             />
           </Backdrop>
         )}
-
-        {files.length ? (
+        {console.log("files in cond", files)}
+        {files.length > 0 ? (
           <Chip
             label={`${files.length} attachments files`}
             variant="outlined"
