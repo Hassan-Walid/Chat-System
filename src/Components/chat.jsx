@@ -1,10 +1,4 @@
-import React, {
-  memo,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { memo, useContext, useEffect, useRef, useState } from "react";
 import "../Styles/chat.css";
 import {
   Avatar,
@@ -40,7 +34,7 @@ import {
   ref as refStorage,
   uploadBytes,
   getDownloadURL,
-  getMetadata
+  getMetadata,
 } from "firebase/storage";
 import app from "../config.js";
 
@@ -140,7 +134,7 @@ function Chat({ drawer }) {
     // messagesArr =[...messagesArr,messageContainForm];
   };
   const refsMessages = useRef(new Map());
-  const {setMessageRefs } = useContext(RoomContext);
+  const { setMessageRefs } = useContext(RoomContext);
 
   useEffect(() => {
     return () => {
@@ -195,36 +189,48 @@ function Chat({ drawer }) {
       // get current size from real time DB
       const refThreadConfig = ref(db, `Threads/${threadId}/configuration`);
       const snapshot = await get(refThreadConfig);
+      let threadConfig = null;
       if (snapshot.exists()) {
-        let threadConfig = snapshot.val();
+        threadConfig = snapshot.val() ?? null;
+      }
+      console.log("thread = ", threadConfig);
       try {
         for (let i = 0; i < files.length; i++) {
           console.log(files[i].name);
-          let storageRef = refStorage(
-            storage,
-            `attachments/${files[i].name}`
-          );
-           getMetadata(storageRef).then(async(metaDate)=>{
-            let FileSizeMB = metaDate.size/(1000*1000);
-            if( threadConfig.totalFileStorageUsedMB + FileSizeMB <= threadConfig.totalFileStorageLimitMB)
-            {
-              // upload file in storage > code below
-              await uploadBytes(storageRef, files[i]);
-              const url = await getDownloadURL(storageRef);
-              attachmentFiles.push({
-                type: files[i].type.startsWith("image/") ? "image" : "file",
-                url: url,
-                name: files[i].name,
-              }); 
-              // update totalFileStorageUsedMB in real time DB
-              const updates = {};
-              updates[
-                `/Threads/${threadId}/configuration/totalFileStorageUsedMB`
-              ] = threadConfig.totalFileStorageUsedMB + FileSizeMB;
-              await update(ref(db, `/`), updates);
-            }
-            // else {snack bar > The allowed files size for this thread is over, You can't send files any more!! }
-          })
+          let storageRef = refStorage(storage, `attachments/${files[i].name}`);
+          let MetaDataFile = await getMetadata(storageRef);
+          let FileSizeMB = MetaDataFile.size / (1000 * 1000);
+
+          console.log("FileSizeMB", FileSizeMB);
+          // console.log("in then");
+          if (
+            threadConfig.totalFileStorageUsedMB + FileSizeMB <=
+            threadConfig.totalFileStorageLimitMB
+          ) {
+            // upload file in storage > code below
+            console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+            await uploadBytes(storageRef, files[i]);
+            const url = await getDownloadURL(storageRef);
+            console.log("url", url);
+            attachmentFiles.push({
+              type: files[i].type.startsWith("image/") ? "image" : "file",
+              url: url,
+              name: files[i].name,
+            });
+            console.log("attachmentFiles", attachmentFiles);
+            // update totalFileStorageUsedMB in real time DB
+            const updates = {};
+            updates[
+              `/Threads/${threadId}/configuration/totalFileStorageUsedMB`
+            ] = threadConfig.totalFileStorageUsedMB + FileSizeMB;
+            await update(ref(db, `/`), updates);
+          } else {
+            console.log("else of snack");
+            setOpenSnackbar(true);
+            setFiles([]);
+            return;
+          }
+          // else {snack bar > The allowed files size for this thread is over, You can't send files any more!! }
         }
       } catch (e) {
         console.log("error");
@@ -280,7 +286,6 @@ function Chat({ drawer }) {
       );
     }
   };
-
   const handleEmoji = () => {
     setOpenEmoji(!openEmoji);
   };
