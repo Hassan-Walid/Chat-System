@@ -5,6 +5,7 @@ import {
   Backdrop,
   Checkbox,
   Chip,
+  CircularProgress,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -12,7 +13,6 @@ import {
   IconButton,
   Radio,
   RadioGroup,
-  Snackbar,
   Stack,
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -43,12 +43,12 @@ import { RoomContext } from "../Context/room.js";
 
 import { format, toZonedTime } from "date-fns-tz";
 import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 
 function Chat({ drawer }) {
   const [input, setInput] = useState("");
   const { threadId } = useParams();
-  // const [roomId] = useContext(Room);
-  // const [roomName, setRoomName] = useState("");
+
   const [messagesState, setMessagesState] = useState([]);
 
   const db = getDatabase(app);
@@ -59,16 +59,18 @@ function Chat({ drawer }) {
   const textAreaRef = useRef(null);
   const [openImage, setOpenImage] = React.useState(false);
   const [imageData, setImageData] = useState(null);
-  const [openSnackbar, setOpenSnackbar] = React.useState(false);
   const { setRoomName } = useContext(RoomContext);
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { currentUser } = useContext(RoomContext);
   const [optionsSelected, setOptionsSelected] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // const [disabledForm,setDisabledForm]
   console.log("current User = ", currentUser);
 
   const handleAttachFile = (e) => {
+    console.log("handle att file");
+    const fileInput = e.target;
     setFiles([]);
     // console.log("ee=", e);
     // console.log("ref", textAreaRef);
@@ -79,27 +81,14 @@ function Chat({ drawer }) {
       setFiles((oldFiles) => [...oldFiles, item]);
       // console.log("item", item.name);
     }
+    // console.log("value", fileInput.value);
+    fileInput.value = null;
   };
 
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
-  };
   const handleDeleteFile = () => {
     setFiles([]);
+    console.log("on delete");
   };
-
-  const actionSnackbar = (
-    <React.Fragment>
-      <IconButton
-        size="small"
-        aria-label="close"
-        color="inherit"
-        onClick={handleCloseSnackbar}
-      >
-        <CloseIcon fontSize="small" />
-      </IconButton>
-    </React.Fragment>
-  );
 
   const handleSubmitForm = async (formId) => {
     console.log("value ==", optionsSelected);
@@ -144,19 +133,16 @@ function Chat({ drawer }) {
   }, [setMessageRefs]);
 
   useEffect(() => {
+    // console.log("useEffect");
     const getTitleThread = async () => {
       const dbRefThread = ref(db, `Threads/${threadId}`);
       const snapshot = await get(dbRefThread);
       if (snapshot.exists()) {
         const threadData = snapshot.val();
-        setRoomName(threadData.threadTittle);
+        setRoomName(threadData.threadTitle);
       }
     };
     getTitleThread();
-  }, [threadId]);
-
-  useEffect(() => {
-    // console.log("useEffect");
     refsMessages.current = new Map();
     setMessagesState([]);
 
@@ -229,7 +215,9 @@ function Chat({ drawer }) {
             await update(ref(db, `/`), updates);
           } else {
             console.log("else of snack");
-            setOpenSnackbar(true);
+            toast.error(
+              "The allowed files size for this thread is over, You can't send files any more!!"
+            );
             setFiles([]);
             return;
           }
@@ -250,7 +238,7 @@ function Chat({ drawer }) {
         senderName: currentUser.username,
         senderId: currentUser.userId,
         senderImage: currentUser.userImg,
-        type: "user",
+        senderType: "user",
       }, // send form computam ???
       date: new Date().toISOString(),
     };
@@ -269,14 +257,14 @@ function Chat({ drawer }) {
 
     if (!newMessageObject.content?.length && files.length === 0) {
       // no send content and att
-      setOpenSnackbar(true);
+      toast.error("Can't Send Empty Message");
     } else {
       messages.push(newMessageObject);
       await set(dbRefMessages, messages);
       setInput("");
       setFiles([]);
       console.log("after send =", files);
-      textAreaRef.current.value = "";
+      // textAreaRef.current.value = "";
       window.scrollTo({
         top: document.documentElement.scrollHeight,
         behavior: "smooth",
@@ -293,10 +281,14 @@ function Chat({ drawer }) {
     setOpenEmoji(!openEmoji);
   };
 
-  const handlePressEnter = (e) => {
+  const handlePressEnter = async (e) => {
     if (!e.shiftKey && e.key === "Enter") {
       // console.log("input", input);
-      sendMessage();
+
+      setLoading(true); // Set loading to true before sending the message
+      // toast.success("Sent Message");
+      await sendMessage(); // Wait for the message to be sent
+      setLoading(false);
     }
   };
 
@@ -341,294 +333,307 @@ function Chat({ drawer }) {
   };
 
   return (
-    <Stack className="chat">
-      <div className="chatbody">
-        {/* {console.log(typeof messages)} */}
-        <Snackbar
-          open={openSnackbar}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
-          message="Can't Send Empty Message"
-          action={actionSnackbar}
-        />
-        {messagesState.map((message) => {
-          return (
-            <div
-              ref={(el) => {
-                // if (el) {
-                // console.log("el", el);
-                addToRefsArray(el, message.messageId);
-                // }
-              }}
-              key={uuid()}
-              className={
-                message.sender.senderName === currentUser.username
-                  ? "chat_message"
-                  : "chat_reciver" // check username
-              }
-            >
-              <Avatar
-                src={message.sender.senderImage} // get from context user API
-                style={{ marginTop: "2.3%" }}
-                sx={
-                  ({ width: "40px" },
-                  message.sender.senderName === currentUser.username
-                    ? { marginLeft: "10px" }
-                    : { marginRight: "10px" })
-                }
-              ></Avatar>
-
-              <div className="chat-section">
-                <span className="usernameMessage">
-                  {/* {console.log("mes", message)} */}
-                  {message.sender.senderName}
-                </span>
-
-                <div
-                  key={uuid}
-                  className="contentMessage"
-                  style={
-                    message.senderName === currentUser.username //  username of user exist
-                      ? { backgroundColor: "#9cb3d1" }
-                      : { backgroundColor: "lightgrey" }
-                  }
-                >
-                  {message.content &&
-                  message.content.constructor.name === "Object" ? (
-                    message.type === "radio" ? (
-                      <FormControl
-                        disabled={message.content.disable}
-                        style={{ padding: "20px" }}
-                      >
-                        <FormLabel id="demo-radio-buttons-group-label">
-                          {message.content.formQuestion}
-                        </FormLabel>
-                        <RadioGroup
-                          aria-labelledby="demo-radio-buttons-group-label"
-                          name="radio-buttons-group"
-                          onChange={(e) => setOptionsSelected(e.target.value)}
-                          value={optionsSelected}
-                        >
-                          {message.content.options.map((option) => (
-                            <FormControlLabel
-                              value={option}
-                              control={<Radio />}
-                              label={option}
-                            />
-                          ))}
-                        </RadioGroup>
-                        <input
-                          hidden={message.content.disable}
-                          onClick={() =>
-                            handleSubmitForm(message?.content?.formId ?? "0")
-                          }
-                          type="submit"
-                          style={{ borderColor: "#3482ba", cursor: "pointer" }}
-                          className="LinkAttach"
-                        ></input>
-                      </FormControl>
-                    ) : (
-                      <FormControl
-                        disabled={message.content.disable}
-                        style={{ padding: "20px" }}
-                      >
-                        <FormLabel id="demo-radio-buttons-group-label">
-                          {message.content.formQuestion}
-                        </FormLabel>
-                        <FormGroup aria-label="position">
-                          {message.content.options.map((option) => (
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  name={option}
-                                  checked={optionsSelected.includes(option)}
-                                  // onChange={(e) => {
-                                  //   let found = false;
-                                  //   // optionsSelected.forEach((item, index) => {
-                                  //   //   console.log("item", item);
-                                  //   //   if (item === e.target.value) {
-                                  //   //     console.log("inininininininin");
-                                  //   //     optionsSelected.splice(index, 1);
-                                  //   //     found = true;
-                                  //   //   }
-                                  //   // });
-                                  //   // !found
-                                  //   //   ?
-                                  //   setOptionsSelected([
-                                  //     ...optionsSelected,
-                                  //     e.target.value,
-                                  //   ]);
-                                  //   // : setOptionsSelected([
-                                  //   //     ...optionsSelected,
-                                  //   //   ]);
-                                  //   console.log("check box: ", optionsSelected);
-                                  // }}
-                                  onChange={handleCheckboxChange}
-                                />
-                              }
-                              label={option}
-                            />
-                          ))}
-                        </FormGroup>
-                        <input
-                          hidden={message.content.disable}
-                          onClick={() =>
-                            handleSubmitForm(message?.content?.formId ?? "0")
-                          }
-                          type="submit"
-                          style={{ borderColor: "#3482ba", cursor: "pointer" }}
-                          className="LinkAttach"
-                        ></input>
-                      </FormControl>
-                    )
-                  ) : (
-                    <pre
-                      style={{
-                        whiteSpace: "pre-wrap",
-
-                        wordWrap: "break-word",
-                        maxWidth: "40rem",
-                      }}
-                    >
-                      {message.content}
-                    </pre>
-                  )}
-
-                  {message.attachmentFiles?.length > 0
-                    ? message.attachmentFiles.map((attach) => {
-                        return attach.type === "image" ? (
-                          <>
-                            <img
-                              key={attach.url}
-                              src={attach.url}
-                              alt={attach.name}
-                              width={200}
-                              onClick={() => {
-                                setImageData({
-                                  src: attach.url,
-                                  alt: attach.name,
-                                });
-                                setOpenImage(true);
-                              }}
-                              style={{ cursor: "pointer", padding: 15 }}
-                            ></img>
-                          </>
-                        ) : (
-                          <>
-                            <a
-                              href={attach.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="LinkAttach"
-                            >
-                              🔗{attach.name}
-                            </a>
-                          </>
-                        );
-                      })
-                    : null}
-                </div>
-
-                <span className="timeMessage">
-                  {displayTime(message.date, userTimeZone)}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-        {imageData && (
-          <Backdrop
-            sx={{
-              zIndex: (theme) => theme.zIndex.drawer + 1,
-            }}
-            open={openImage}
-            onClick={handleCloseImage}
-          >
-            {/* {console.log("img", message.attachmentFiles.url)} */}
-            <img
-              src={imageData.src}
-              alt={imageData.alt}
-              width="50%"
-              style={{ cursor: "pointer" }}
-            />
-          </Backdrop>
-        )}
-        {console.log("files in cond", files)}
-        {files.length > 0 ? (
-          <Chip
-            label={`${files.length} attachments files`}
-            variant="outlined"
-            // onClick={handleClickFile}
-            onDelete={handleDeleteFile}
-            sx={{
-              zIndex: (theme) => theme.zIndex.drawer + 1,
-            }}
-            style={{
-              marginBottom: "4%",
-              position: "fixed",
-              bottom: "0",
-              // top: document.documentElement.scrollHeight - 100,
-              left: "55%",
-            }}
-          />
-        ) : null}
-        <div ref={bottomRef}></div>
-      </div>
-
-      <div
-        className={drawer ? "chatfooterWithDrawer" : "chatfooterWithoutDrawer"}
-        // style={drawer ? { width: "80%" } : { width: "98%" }}
+    <>
+      <Toaster />
+      <Backdrop
+        sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
+        open={loading}
       >
-        <IconButton onClick={handleEmoji}>
-          <InsertEmoticonIcon />
-        </IconButton>
-        <div>
-          <EmojiPicker
-            open={openEmoji}
-            onEmojiClick={(e) => {
-              // console.log("e >> ", e.emoji);
-              // console.log("input >>", input);
-              setInput((old) => old + e.emoji);
-            }}
-          />
+        <CircularProgress color="inherit" />
+      </Backdrop>
+      <Stack className="chat">
+        <div className="chatbody">
+          {/* {console.log(typeof messages)} */}
+          {messagesState.map((message) => {
+            return (
+              <div
+                ref={(el) => {
+                  // if (el) {
+                  // console.log("el", el);
+                  addToRefsArray(el, message.date);
+                  // }
+                }}
+                key={uuid()}
+                className={
+                  message?.sender?.senderName === currentUser.username
+                    ? "chat_message"
+                    : "chat_reciver" // check username
+                }
+              >
+                {console.log("error:", message)}
+                <Avatar
+                  src={message?.sender?.senderImage} // get from context user API
+                  style={{ marginTop: "2.3%" }}
+                  sx={
+                    ({ width: "40px" },
+                    message.sender.senderName === currentUser.username
+                      ? { marginLeft: "10px" }
+                      : { marginRight: "10px" })
+                  }
+                ></Avatar>
+
+                <div className="chat-section">
+                  <span className="usernameMessage">
+                    {/* {console.log("mes", message)} */}
+                    {message.sender.senderName}
+                  </span>
+
+                  <div
+                    key={uuid}
+                    className="contentMessage"
+                    style={
+                      message.senderName === currentUser.username //  username of user exist
+                        ? { backgroundColor: "#9cb3d1" }
+                        : { backgroundColor: "lightgrey" }
+                    }
+                  >
+                    {message.content &&
+                    message.content.constructor.name === "Object" ? (
+                      message.type === "radio" ? (
+                        <FormControl
+                          disabled={message.content.disable}
+                          style={{ padding: "20px" }}
+                        >
+                          <FormLabel id="demo-radio-buttons-group-label">
+                            {message.content.formQuestion}
+                          </FormLabel>
+                          <RadioGroup
+                            aria-labelledby="demo-radio-buttons-group-label"
+                            name="radio-buttons-group"
+                            onChange={(e) => setOptionsSelected(e.target.value)}
+                            value={optionsSelected}
+                          >
+                            {message.content.options.map((option) => (
+                              <FormControlLabel
+                                value={option}
+                                control={<Radio />}
+                                label={option}
+                              />
+                            ))}
+                          </RadioGroup>
+                          <input
+                            hidden={message.content.disable}
+                            onClick={() =>
+                              handleSubmitForm(message?.content?.formId ?? "0")
+                            }
+                            type="submit"
+                            style={{
+                              borderColor: "#3482ba",
+                              cursor: "pointer",
+                            }}
+                            className="LinkAttach"
+                          ></input>
+                        </FormControl>
+                      ) : (
+                        <FormControl
+                          disabled={message.content.disable}
+                          style={{ padding: "20px" }}
+                        >
+                          <FormLabel id="demo-radio-buttons-group-label">
+                            {message.content.formQuestion}
+                          </FormLabel>
+                          <FormGroup aria-label="position">
+                            {message.content.options.map((option) => (
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    name={option}
+                                    checked={optionsSelected.includes(option)}
+                                    // onChange={(e) => {
+                                    //   let found = false;
+                                    //   // optionsSelected.forEach((item, index) => {
+                                    //   //   console.log("item", item);
+                                    //   //   if (item === e.target.value) {
+                                    //   //     console.log("inininininininin");
+                                    //   //     optionsSelected.splice(index, 1);
+                                    //   //     found = true;
+                                    //   //   }
+                                    //   // });
+                                    //   // !found
+                                    //   //   ?
+                                    //   setOptionsSelected([
+                                    //     ...optionsSelected,
+                                    //     e.target.value,
+                                    //   ]);
+                                    //   // : setOptionsSelected([
+                                    //   //     ...optionsSelected,
+                                    //   //   ]);
+                                    //   console.log("check box: ", optionsSelected);
+                                    // }}
+                                    onChange={handleCheckboxChange}
+                                  />
+                                }
+                                label={option}
+                              />
+                            ))}
+                          </FormGroup>
+                          <input
+                            hidden={message.content.disable}
+                            onClick={() =>
+                              handleSubmitForm(message?.content?.formId ?? "0")
+                            }
+                            type="submit"
+                            style={{
+                              borderColor: "#3482ba",
+                              cursor: "pointer",
+                            }}
+                            className="LinkAttach"
+                          ></input>
+                        </FormControl>
+                      )
+                    ) : (
+                      <pre
+                        style={{
+                          whiteSpace: "pre-wrap",
+
+                          wordWrap: "break-word",
+                          maxWidth: "40rem",
+                        }}
+                      >
+                        {message.content}
+                      </pre>
+                    )}
+
+                    {message.attachmentFiles?.length > 0
+                      ? message.attachmentFiles.map((attach) => {
+                          return attach.type === "image" ? (
+                            <>
+                              <img
+                                key={attach.url}
+                                src={attach.url}
+                                alt={attach.name}
+                                width={200}
+                                onClick={() => {
+                                  setImageData({
+                                    src: attach.url,
+                                    alt: attach.name,
+                                  });
+                                  setOpenImage(true);
+                                }}
+                                style={{ cursor: "pointer", padding: 15 }}
+                              ></img>
+                            </>
+                          ) : (
+                            <>
+                              <a
+                                href={attach.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="LinkAttach"
+                              >
+                                🔗{attach.name}
+                              </a>
+                            </>
+                          );
+                        })
+                      : null}
+                  </div>
+
+                  <span className="timeMessage">
+                    {displayTime(message.date, userTimeZone)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          {imageData && (
+            <Backdrop
+              sx={{
+                zIndex: (theme) => theme.zIndex.drawer + 1,
+              }}
+              open={openImage}
+              onClick={handleCloseImage}
+            >
+              {/* {console.log("img", message.attachmentFiles.url)} */}
+              <img
+                src={imageData.src}
+                alt={imageData.alt}
+                width="50%"
+                style={{ cursor: "pointer" }}
+              />
+            </Backdrop>
+          )}
+          {console.log("files in cond", files)}
+          {console.log("files lens =", files.length)}
+
+          {files.length > 0 ? (
+            <Chip
+              label={`${files.length} attachments files`}
+              variant="outlined"
+              // onClick={handleClickFile}
+              onDelete={handleDeleteFile}
+              sx={{
+                zIndex: (theme) => theme.zIndex.drawer + 1,
+              }}
+              style={{
+                marginBottom: "4%",
+                position: "fixed",
+                bottom: "0",
+                // top: document.documentElement.scrollHeight - 100,
+                left: "55%",
+              }}
+            />
+          ) : null}
+          <div ref={bottomRef}></div>
         </div>
-        <form className="formFooter">
-          <textarea
-            ref={textAreaRef}
-            style={{
-              borderRadius: "15px",
-              resize: "none",
-              padding: "5px",
-              display: "flex",
-              // flex: 1,
-              width: "95%",
-              wordWrap: "break-word",
-            }}
-            rows={2}
-            type="text"
-            placeholder="Type a message"
-            value={input}
-            onChange={(event) => {
-              // console.log("eee", event.target.value);
-              setInput(event.target.value);
-            }}
-            onKeyDown={handlePressEnter}
-          />
-          <IconButton>
-            <label htmlFor="fileUpload" style={{ cursor: "pointer" }}>
-              <AttachFileIcon />
-            </label>
+
+        <div
+          className={
+            drawer ? "chatfooterWithDrawer" : "chatfooterWithoutDrawer"
+          }
+          // style={drawer ? { width: "80%" } : { width: "98%" }}
+        >
+          <IconButton onClick={handleEmoji}>
+            <InsertEmoticonIcon />
           </IconButton>
-          <input
-            type="file"
-            id="fileUpload"
-            style={{ display: "none" }}
-            onChange={handleAttachFile}
-            multiple
-          />
-        </form>
-      </div>
-    </Stack>
+          <div>
+            <EmojiPicker
+              open={openEmoji}
+              onEmojiClick={(e) => {
+                // console.log("e >> ", e.emoji);
+                // console.log("input >>", input);
+                setInput((old) => old + e.emoji);
+              }}
+            />
+          </div>
+          <form className="formFooter">
+            <textarea
+              ref={textAreaRef}
+              style={{
+                borderRadius: "15px",
+                resize: "none",
+                padding: "5px",
+                display: "flex",
+                // flex: 1,
+                width: "95%",
+                wordWrap: "break-word",
+              }}
+              rows={2}
+              type="text"
+              placeholder="Type a message"
+              value={input}
+              onChange={(event) => {
+                // console.log("eee", event.target.value);
+                setInput(event.target.value);
+              }}
+              onKeyDown={handlePressEnter}
+            />
+            <IconButton>
+              <label htmlFor="fileUpload" style={{ cursor: "pointer" }}>
+                <AttachFileIcon />
+              </label>
+            </IconButton>
+            <input
+              type="file"
+              id="fileUpload"
+              style={{ display: "none" }}
+              onChange={handleAttachFile}
+              multiple
+            />
+          </form>
+        </div>
+      </Stack>
+    </>
   );
 }
 

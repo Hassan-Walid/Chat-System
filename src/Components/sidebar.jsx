@@ -5,7 +5,7 @@ import app from "../config.js";
 import { Link } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 
-import { getDatabase, push, ref, set, onChildAdded } from "firebase/database";
+import { getDatabase, ref, onChildAdded, onValue } from "firebase/database";
 import { RoomContext } from "../Context/room.js";
 // import { useRenderCount } from "./countRender";
 
@@ -42,29 +42,41 @@ function Sidebar() {
     //listen when i create a new room
     // arrThreadIDs = [];
     const unsubscribe = onChildAdded(dbRef, (snapshot) => {
-      setThread((prevThreads) => {
-        console.log("s=", snapshot.key);
-        console.log("ssssss=", snapshot.val().users);
-        if (
-          snapshot.val().users.find((user) => {
-            if (user.userId === currentUser.userId) {
-              return true;
-            }
-            return false;
-          })
-        ) {
-          return [...prevThreads, snapshot.val()];
-        } else {
-          return [...prevThreads];
-        }
-      });
+      // setThread((prevThreads) => {
+      const threadData = snapshot.val();
+
+      if (
+        threadData.usersId.find((user) => {
+          if (user === currentUser.userId) {
+            return true;
+          }
+          return false;
+        })
+      ) {
+        const dbRefApps = ref(db, `Apps/${threadData.ownerId}`);
+        const unsubscribeApp = onValue(dbRefApps, (snapshot) => {
+          const appData = snapshot.val();
+          console.log("data=", { ...threadData, ...appData });
+          setThread((prevThreads) => [
+            ...prevThreads,
+            { ...threadData, ...appData },
+          ]);
+        });
+        return () => {
+          unsubscribeApp();
+        };
+      }
+      // });
     });
 
     // Clean up the listener on unmount
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
+    console.log("threads=", threads);
     setFilteredThreads(threads);
   }, [threads]);
 
@@ -125,7 +137,7 @@ function Sidebar() {
       </div>
 
       <div className="sidebar__chats">
-        {filteredThreads.length > 0 ? (
+        {filteredThreads?.length > 0 ? (
           filteredThreads.map((thread) => {
             // console.log(room);
             return (
@@ -138,12 +150,12 @@ function Sidebar() {
               <Link key={uuid()} to={`/threads/${thread.threadId}`}>
                 <div className="chatItemContainer">
                   <img
-                    src={thread["owner"]["appImg"]}
+                    src={thread["appImage"]}
                     alt=""
                     style={{ borderRadius: "15px" }}
                   />
                   <div className="chatInfo">
-                    <h5> {thread["threadTittle"]} </h5>
+                    <h5> {thread["threadTitle"]} </h5>
                     {/* <p> {messages[messages.length - 1]?.message}</p> */}
                   </div>
                 </div>
