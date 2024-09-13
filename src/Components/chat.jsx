@@ -64,11 +64,14 @@ function Chat({ drawer }) {
   const { currentUser } = useContext(RoomContext);
   const [optionsSelected, setOptionsSelected] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [appData, setAppData]  = useState({});
 
   // const [disabledForm,setDisabledForm]
   console.log("current User = ", currentUser);
 
   const handleAttachFile = (e) => {
+    if(textAreaRef.current)
+      textAreaRef.current.focus();
     console.log("handle att file");
     const fileInput = e.target;
     setFiles([]);
@@ -132,6 +135,29 @@ function Chat({ drawer }) {
     };
   }, [setMessageRefs]);
 
+  // get app data
+  useEffect(()=>{
+    if(textAreaRef.current)
+      textAreaRef.current.focus();
+    const getAppData = async function(){
+    let threadRef = ref(db, `Threads/${threadId}`)
+    const snapshot = await get(threadRef); 
+    let ownerId ;
+    if(snapshot.exists())
+      ownerId  = snapshot.val().ownerId;
+    let appRef= ref(db, `Apps/${ownerId}`)
+    const appSnapshot = await get(appRef);
+    if(appSnapshot.exists())
+    {
+      let appData = appSnapshot.val();
+      console.log("appData",appData);
+      setAppData(appData);
+    }
+  } 
+  getAppData();
+  }
+  ,[threadId])
+
   useEffect(() => {
     // console.log("useEffect");
     const getTitleThread = async () => {
@@ -172,6 +198,7 @@ function Chat({ drawer }) {
     let messages = snapshot.val() || [];
     console.log("messages", messages);
     if (files.length > 0) {
+      setLoading(true);
       console.log("before send =", files);
 
       // get current size from real time DB
@@ -235,14 +262,14 @@ function Chat({ drawer }) {
       content: options || input.trim(),
       typeContent: "text",
       sender: {
-        senderName: currentUser.username,
+        senderName: currentUser.userName,
         senderId: currentUser.userId,
-        senderImage: currentUser.userImg,
+        senderImage: currentUser.userImage,
         senderType: "user",
       }, // send form computam ???
       date: new Date().toISOString(),
     };
-
+    console.log("mes",newMessageObject);
     if (!newMessageObject.content && files.length > 0) {
       //send att only
       console.log("1st cond");
@@ -271,10 +298,12 @@ function Chat({ drawer }) {
       });
       setMessagesState(messages);
       newMessageObject = { ...newMessageObject, threadId };
-      axios.post(
-        `${process.env.REACT_APP_Chat_APP_API_URL}/messages/userSend`,
-        newMessageObject
-      );
+      if(appData !== null){
+        await axios.post(
+          `${appData.endpointAddress}/${appData.endPointId}`,
+          {...newMessageObject, threadId}
+        );
+      } 
     }
   };
   const handleEmoji = () => {
@@ -285,7 +314,7 @@ function Chat({ drawer }) {
     if (!e.shiftKey && e.key === "Enter") {
       // console.log("input", input);
 
-      setLoading(true); // Set loading to true before sending the message
+      //setLoading(true); // Set loading to true before sending the message
       // toast.success("Sent Message");
       await sendMessage(); // Wait for the message to be sent
       setLoading(false);
@@ -355,18 +384,18 @@ function Chat({ drawer }) {
                 }}
                 key={uuid()}
                 className={
-                  message?.sender?.senderName === currentUser.username
+                  message?.sender?.senderName === currentUser.userName
                     ? "chat_message"
                     : "chat_reciver" // check username
                 }
               >
-                {console.log("error:", message)}
+                {/* {console.log("error:", message)} */}
                 <Avatar
                   src={message?.sender?.senderImage} // get from context user API
                   style={{ marginTop: "2.3%" }}
                   sx={
                     ({ width: "40px" },
-                    message.sender.senderName === currentUser.username
+                    message.sender.senderName === currentUser.userName
                       ? { marginLeft: "10px" }
                       : { marginRight: "10px" })
                   }
@@ -382,14 +411,14 @@ function Chat({ drawer }) {
                     key={uuid}
                     className="contentMessage"
                     style={
-                      message.senderName === currentUser.username //  username of user exist
+                      message.senderName === currentUser.userName //  username of user exist
                         ? { backgroundColor: "#9cb3d1" }
                         : { backgroundColor: "lightgrey" }
                     }
                   >
                     {message.content &&
-                    message.content.constructor.name === "Object" ? (
-                      message.type === "radio" ? (
+                    message.content.constructor.name === "Object" ? (                      
+                      message.typeContent === "radio" ? (
                         <FormControl
                           disabled={message.content.disable}
                           style={{ padding: "20px" }}
