@@ -71,16 +71,9 @@ export default function PersistentDrawerLeft() {
   const [mainAppBar, setMainAppBar] = React.useState(true);
   const [anchorEl, setAnchorEl] = React.useState(null);
 
-  const handleClickSearch = () => {
-    setAnchorEl(null);
-  };
   console.log("counter render = ");
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
-
-  const handleDrawerOpen = () => {
-    setOpen(true);
-  };
 
   const handleDrawerClose = () => {
     setOpen(false);
