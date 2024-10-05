@@ -59,19 +59,18 @@ function Chat({ drawer }) {
   const textAreaRef = useRef(null);
   const [openImage, setOpenImage] = React.useState(false);
   const [imageData, setImageData] = useState(null);
-  const { setRoomName } = useContext(RoomContext);
+  const { setRoomName, setThreadId } = useContext(RoomContext);
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { currentUser } = useContext(RoomContext);
   const [optionsSelected, setOptionsSelected] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [appData, setAppData]  = useState({});
+  const [appData, setAppData] = useState({});
 
   // const [disabledForm,setDisabledForm]
   console.log("current User = ", currentUser);
 
   const handleAttachFile = (e) => {
-    if(textAreaRef.current)
-      textAreaRef.current.focus();
+    if (textAreaRef.current) textAreaRef.current.focus();
     console.log("handle att file");
     const fileInput = e.target;
     setFiles([]);
@@ -136,27 +135,23 @@ function Chat({ drawer }) {
   }, [setMessageRefs]);
 
   // get app data
-  useEffect(()=>{
-    if(textAreaRef.current)
-      textAreaRef.current.focus();
-    const getAppData = async function(){
-    let threadRef = ref(db, `Threads/${threadId}`)
-    const snapshot = await get(threadRef); 
-    let ownerId ;
-    if(snapshot.exists())
-      ownerId  = snapshot.val().ownerId;
-    let appRef= ref(db, `Apps/${ownerId}`)
-    const appSnapshot = await get(appRef);
-    if(appSnapshot.exists())
-    {
-      let appData = appSnapshot.val();
-      console.log("appData",appData);
-      setAppData(appData);
-    }
-  } 
-  getAppData();
-  }
-  ,[threadId])
+  useEffect(() => {
+    if (textAreaRef.current) textAreaRef.current.focus();
+    const getAppData = async function () {
+      let threadRef = ref(db, `Threads/${threadId}`);
+      const snapshot = await get(threadRef);
+      let ownerId;
+      if (snapshot.exists()) ownerId = snapshot.val().ownerId;
+      let appRef = ref(db, `Apps/${ownerId}`);
+      const appSnapshot = await get(appRef);
+      if (appSnapshot.exists()) {
+        let appData = appSnapshot.val();
+        console.log("appData", appData);
+        setAppData(appData);
+      }
+    };
+    getAppData();
+  }, [threadId]);
 
   useEffect(() => {
     // console.log("useEffect");
@@ -166,6 +161,7 @@ function Chat({ drawer }) {
       if (snapshot.exists()) {
         const threadData = snapshot.val();
         setRoomName(threadData.threadTitle);
+        setThreadId(threadData.threadId);
       }
     };
     getTitleThread();
@@ -269,7 +265,7 @@ function Chat({ drawer }) {
       }, // send form computam ???
       date: new Date().toISOString(),
     };
-    console.log("mes",newMessageObject);
+    console.log("mes", newMessageObject);
     if (!newMessageObject.content && files.length > 0) {
       //send att only
       console.log("1st cond");
@@ -298,12 +294,12 @@ function Chat({ drawer }) {
       });
       setMessagesState(messages);
       newMessageObject = { ...newMessageObject, threadId };
-      if(appData !== null){
-        await axios.post(
-          `${appData.endpointAddress}/${appData.endPointId}`,
-          {...newMessageObject, threadId}
-        );
-      } 
+      if (appData !== null) {
+        await axios.post(`${appData.endpointAddress}/${appData.endPointId}`, {
+          ...newMessageObject,
+          threadId,
+        });
+      }
     }
   };
   const handleEmoji = () => {
@@ -417,7 +413,7 @@ function Chat({ drawer }) {
                     }
                   >
                     {message.content &&
-                    message.content.constructor.name === "Object" ? (                      
+                    message.content.constructor.name === "Object" ? (
                       message.typeContent === "radio" ? (
                         <FormControl
                           disabled={message.content.disable}
