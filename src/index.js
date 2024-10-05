@@ -3,14 +3,11 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  // <React.StrictMode>
+const rootElement = document.getElementById("root");
+rootElement.style.width = "870px"; // Set the width you want
+const root = ReactDOM.createRoot(rootElement);
+root.render(<App />);
 
-  <App />
-
-  // </React.StrictMode>
-);
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

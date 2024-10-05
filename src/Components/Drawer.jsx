@@ -91,7 +91,12 @@ export default function PersistentDrawerLeft() {
       <AppBar
         position="fixed"
         open={open}
-        style={{ backgroundColor: "#3482ba" }}
+        // style={{ backgroundColor: "#3482ba"}}
+        sx={{ 
+          backgroundColor: "#3482ba", 
+          width: "600px",    // Set the fixed width
+          left: 0            // Keep it aligned to the left side
+        }}
       >
         {mainAppBar ? (
           <MainAppBar

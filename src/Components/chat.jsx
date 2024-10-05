@@ -634,7 +634,7 @@ function Chat({ drawer }) {
                 padding: "5px",
                 display: "flex",
                 // flex: 1,
-                width: "95%",
+                width: "500px",
                 wordWrap: "break-word",
               }}
               rows={2}
